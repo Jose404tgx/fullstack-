@@ -407,7 +407,7 @@ console.log('Dist path exists:', fs.existsSync(distPath));
 
 if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.use((req, res) => {
         if (!req.path.startsWith('/api') && !req.path.startsWith('/clientes') && 
             !req.path.startsWith('/categoria') && !req.path.startsWith('/proveedor') &&
             !req.path.startsWith('/producto') && !req.path.startsWith('/ventas') && 
@@ -416,7 +416,6 @@ if (fs.existsSync(distPath)) {
         }
     });
 } else {
-    // Build failed or dist not found - show status
     app.get('/', (req, res) => {
         res.json({
             status: 'Backend running',
