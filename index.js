@@ -402,6 +402,9 @@ app.delete('/detalle_venta/:id', async (req, res) => {
 const fs = require('fs');
 const distPath = path.join(__dirname, 'frontend', 'dist');
 
+console.log('Serving frontend from:', distPath);
+console.log('Dist path exists:', fs.existsSync(distPath));
+
 if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
@@ -411,6 +414,16 @@ if (fs.existsSync(distPath)) {
             !req.path.startsWith('/detalle_venta')) {
             res.sendFile(path.join(distPath, 'index.html'));
         }
+    });
+} else {
+    // Build failed or dist not found - show status
+    app.get('/', (req, res) => {
+        res.json({
+            status: 'Backend running',
+            frontend: 'Not built - dist folder missing',
+            distPath: distPath,
+            availableRoutes: ['/clientes', '/categoria', '/proveedor', '/producto', '/ventas', '/detalle_venta']
+        });
     });
 }
 
