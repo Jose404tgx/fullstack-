@@ -1,0 +1,20 @@
+{
+  "name": "backend_js",
+  "version": "1.0.0",
+  "description": "backend con javascript",
+  "license": "MIT",
+  "author": "chavez paez jose luis",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

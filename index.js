@@ -1,0 +1,154 @@
+const express = require('express');
+const path = require('path');
+const app = express();
+const port = process.env.PORT || 3127;
+
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+    next();
+});
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bezcodjjxvwqimvejegh.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlemNvZGpqeHZ3cWltdmVqZWdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NTgyMDAsImV4cCI6MjA5MjQzNDIwMH0.GeRu63lv2oEyf9cXxuy_9T1OGD9LBBP_dGd6Oq8wOAs';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlemNvZGpqeHZ3cWltdmVqZWdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg1ODIwMCwiZXhwIjoyMDkyNDM0MjAwfQ.dG1xmikYXDd2ciRt7VtAHpZ05fEqErOzBb8363O6LwE';
+
+const headers = {
+    'apikey': SUPABASE_SERVICE_KEY,
+    'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+};
+
+app.get('/clientes', async (req, res) => {
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/clientes?select=*&order=id_cliente.asc`, { headers });
+        const clientes = await response.json();
+        res.json(clientes);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/clientes/:id', async (req, res) => {
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/clientes?id_cliente=eq.${req.params.id}&select=*`, { headers });
+        const clientes = await response.json();
+        if (clientes.length === 0) {
+            return res.status(404).json({ error: 'Cliente no encontrado' });
+        }
+        res.json(clientes[0]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/clientes', async (req, res) => {
+    try {
+        const { nombres, apellidos, direccion, telefono } = req.body;
+        
+        if (!nombres || !apellidos || !direccion || !telefono) {
+            return res.status(400).json({ error: 'Todos los campos son requeridos' });
+        }
+        
+        const headersPost = {
+            'apikey': SUPABASE_SERVICE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        };
+        
+        const clienteData = {
+            nombres: nombres.toString().trim().substring(0, 50),
+            apellidos: apellidos.toString().trim().substring(0, 50),
+            direccion: direccion.toString().trim().substring(0, 50),
+            telefono: telefono.toString().trim().substring(0, 50)
+        };
+        
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
+            method: 'POST',
+            headers: headersPost,
+            body: JSON.stringify(clienteData)
+        });
+        
+        const text = await response.text();
+        
+        if (!response.ok) {
+            console.log('Supabase error:', response.status, text);
+            return res.status(response.status).json({ error: text });
+        }
+        
+        const data = JSON.parse(text);
+        res.status(201).json(data[0]);
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/clientes/:id', async (req, res) => {
+    try {
+        const { nombres, apellidos, direccion, telefono } = req.body;
+        
+        const clienteData = {
+            nombres: (nombres?.trim() || '').substring(0, 50),
+            apellidos: (apellidos?.trim() || '').substring(0, 50),
+            direccion: (direccion?.trim() || '').substring(0, 50),
+            telefono: (telefono?.trim() || '').substring(0, 50)
+        };
+        
+        const headersPut = {
+            'apikey': SUPABASE_SERVICE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        };
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/clientes?id_cliente=eq.${req.params.id}`, {
+            method: 'PATCH',
+            headers: headersPut,
+            body: JSON.stringify(clienteData)
+        });
+        const text = await response.text();
+        if (!response.ok) {
+            return res.status(response.status).json({ error: text });
+        }
+        const data = JSON.parse(text);
+        if (data.length === 0) {
+            return res.status(404).json({ error: 'Cliente no encontrado' });
+        }
+        res.json(data[0]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/clientes/:id', async (req, res) => {
+    try {
+        const headersDel = {
+            'apikey': SUPABASE_SERVICE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+        };
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/clientes?id_cliente=eq.${req.params.id}`, {
+            method: 'DELETE',
+            headers: headersDel
+        });
+        if (response.status === 204) {
+            res.json({ mensaje: 'Cliente eliminado' });
+        } else {
+            res.status(404).json({ error: 'Cliente no encontrado' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.listen(port, '0.0.0.0', () => {
+    console.log('Servidor escuchando en http://localhost:' + port);
+});
