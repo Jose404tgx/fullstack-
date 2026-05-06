@@ -288,7 +288,7 @@ app.get('/producto/admin', verifyAdminToken, async (req, res) => {
 
 app.post('/producto', verifyAdminToken, async (req, res) => {
     try {
-        const { descripcion, precio, stock, id_categoria, id_proveedor } = req.body;
+        const { descripcion, precio, stock, id_categoria, id_proveedor, imagenes } = req.body;
         if (!descripcion || !precio || !stock || !id_categoria || !id_proveedor) return res.status(400).json({ error: 'Todos los campos son requeridos' });
         const nextId = await getNextId('producto', 'id_producto');
         const response = await fetch(`${SUPABASE_URL}/rest/v1/producto`, {
@@ -300,7 +300,8 @@ app.post('/producto', verifyAdminToken, async (req, res) => {
                 precio: parseFloat(precio),
                 stock: parseInt(stock),
                 id_categoria: parseInt(id_categoria),
-                id_proveedor: parseInt(id_proveedor)
+                id_proveedor: parseInt(id_proveedor),
+                imagenes: imagenes || null
             })
         });
         const text = await response.text();
@@ -313,7 +314,7 @@ app.post('/producto', verifyAdminToken, async (req, res) => {
 
 app.put('/producto/:id', verifyAdminToken, async (req, res) => {
     try {
-        const { descripcion, precio, stock, id_categoria, id_proveedor } = req.body;
+        const { descripcion, precio, stock, id_categoria, id_proveedor, imagenes } = req.body;
         const response = await fetch(`${SUPABASE_URL}/rest/v1/producto?id_producto=eq.${req.params.id}`, {
             method: 'PATCH',
             headers,
@@ -322,7 +323,8 @@ app.put('/producto/:id', verifyAdminToken, async (req, res) => {
                 precio: precio !== undefined ? parseFloat(precio) : undefined,
                 stock: stock !== undefined ? parseInt(stock) : undefined,
                 id_categoria: id_categoria !== undefined ? parseInt(id_categoria) : undefined,
-                id_proveedor: id_proveedor !== undefined ? parseInt(id_proveedor) : undefined
+                id_proveedor: id_proveedor !== undefined ? parseInt(id_proveedor) : undefined,
+                imagenes: imagenes !== undefined ? imagenes : undefined
             })
         });
         const text = await response.text();

@@ -115,6 +115,9 @@ function Tienda() {
       <div className="productos-grid">
         {productos.map(producto => (
           <div key={producto.id_producto} className="producto-card">
+            {producto.imagenes && (
+              <img src={producto.imagenes} alt={producto.descripcion} className="producto-imagen" />
+            )}
             <div className="producto-info">
               <h3>{producto.descripcion}</h3>
               <p className="categoria">{producto.categoria?.descripcion}</p>

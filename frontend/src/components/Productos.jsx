@@ -5,7 +5,7 @@ export default function Productos() {
   const [data, setData] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [proveedores, setProveedores] = useState([]);
-  const [form, setForm] = useState({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '' });
+  const [form, setForm] = useState({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' });
   const [editId, setEditId] = useState(null);
   const [msg, setMsg] = useState('');
 
@@ -24,7 +24,8 @@ export default function Productos() {
         precio: parseFloat(form.precio),
         stock: parseInt(form.stock),
         id_categoria: parseInt(form.id_categoria),
-        id_proveedor: parseInt(form.id_proveedor)
+        id_proveedor: parseInt(form.id_proveedor),
+        imagenes: form.imagenes || null
       };
       if (editId) {
         await api.updateProducto(editId, payload);
@@ -33,7 +34,7 @@ export default function Productos() {
         await api.createProducto(payload);
         setMsg('Producto creado');
       }
-      setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '' });
+        setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' });
       setEditId(null);
       load();
     } catch (err) { setMsg('Error: ' + err.message); }
@@ -45,7 +46,8 @@ export default function Productos() {
       precio: item.precio.toString(),
       stock: item.stock.toString(),
       id_categoria: item.id_categoria.toString(),
-      id_proveedor: item.id_proveedor.toString()
+      id_proveedor: item.id_proveedor.toString(),
+      imagenes: item.imagenes || ''
     });
     setEditId(item.id_producto);
   };
@@ -74,15 +76,18 @@ export default function Productos() {
           <option value="">Seleccionar Proveedor</option>
           {proveedores.map(p => <option key={p.id_proveedor} value={p.id_proveedor}>{p.razonsocial}</option>)}
         </select>
+        <input placeholder="URL de la imagen" value={form.imagenes || ''} onChange={e => setForm({...form, imagenes: e.target.value})} />
         <button type="submit">{editId ? 'Actualizar' : 'Crear'}</button>
         {editId && <button type="button" onClick={() => { setEditId(null); setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '' }); }}>Cancelar</button>}
       </form>
       <table border="1" cellPadding="8" style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th>ID</th><th>Descripción</th><th>Precio</th><th>Stock</th><th>Categoría</th><th>Proveedor</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>ID</th><th>Imagen</th><th>Descripción</th><th>Precio</th><th>Stock</th><th>Categoría</th><th>Proveedor</th><th>Acciones</th></tr></thead>
         <tbody>
           {data.map(item => (
             <tr key={item.id_producto}>
-              <td>{item.id_producto}</td><td>{item.descripcion}</td><td>{item.precio}</td><td>{item.stock}</td>
+              <td>{item.id_producto}</td>
+              <td>{item.imagenes ? <img src={item.imagenes} alt={item.descripcion} style={{ width: 50, height: 50, objectFit: 'cover' }} /> : 'Sin imagen'}</td>
+              <td>{item.descripcion}</td><td>{item.precio}</td><td>{item.stock}</td>
               <td>{item.categoria?.descripcion || item.id_categoria}</td>
                <td>{item.proveedor?.razonsocial || item.id_proveedor}</td>
               <td>
