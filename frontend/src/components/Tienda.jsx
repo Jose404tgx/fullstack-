@@ -11,7 +11,9 @@ function Tienda() {
   const [showCart, setShowCart] = useState(false);
   const [cliente, setCliente] = useState({ nombres: '', apellidos: '', direccion: '', telefono: '' });
   const [showCheckout, setShowCheckout] = useState(false);
-  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+  const [taypiData, setTaypiData] = useState(null);
+  const [paymentId, setPaymentId] = useState(null);
+  const [voucher, setVoucher] = useState(null);
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -70,25 +72,74 @@ function Tienda() {
       return;
     }
     try {
-      const detalles = cart.map(item => ({
-        id_producto: item.id_producto,
-        cantidad: item.cantidad,
-        stock_actual: item.stock
-      }));
-      const result = await api.createStorePurchase({
-        cliente,
-        detalles
+      const reference = `ORDER-${Date.now()}`;
+      const response = await fetch('/taypi/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: getTotal(),
+          reference: reference,
+          description: `Compra en tienda - ${cliente.nombres}`
+        })
       });
-      if (result.error) {
-        alert('Error: ' + result.error);
+      const data = await response.json();
+      if (data.error) {
+        alert('Error al generar pago: ' + data.error);
         return;
       }
-      setCheckoutSuccess(true);
-      setCart([]);
+      setTaypiData(data);
+      setPaymentId(data.payment_id);
       setShowCheckout(false);
-      setCliente({ nombres: '', apellidos: '', direccion: '', telefono: '' });
+      setShowCart(false);
     } catch (err) {
-      alert('Error al procesar la venta');
+      alert('Error al procesar el pago');
+    }
+  };
+
+  const checkPaymentStatus = async () => {
+    if (!paymentId) return;
+    try {
+      const response = await fetch(`/taypi/payment/${paymentId}`);
+      const data = await response.json();
+      if (data.status === 'paid') {
+        const detalles = cart.map(item => ({
+          id_producto: item.id_producto,
+          cantidad: item.cantidad,
+          stock_actual: item.stock
+        }));
+        const result = await api.createStorePurchase({
+          cliente,
+          detalles
+        });
+        setTaypiData(null);
+        setPaymentId(null);
+        setVoucher({
+          venta_id: result.venta_id,
+          cliente,
+          productos: cart,
+          total: getTotal(),
+          payment_id: paymentId,
+          fecha: new Date().toLocaleString()
+        });
+        setCart([]);
+        setCliente({ nombres: '', apellidos: '', direccion: '', telefono: '' });
+      } else {
+        alert('El pago aún no se ha completado. Estado: ' + data.status);
+      }
+    } catch (err) {
+      alert('Error al verificar el pago');
+    }
+  };
+
+  const cancelPayment = async () => {
+    if (!paymentId) return;
+    try {
+      await fetch(`/taypi/cancel/${paymentId}`, { method: 'POST' });
+      setTaypiData(null);
+      setPaymentId(null);
+      setShowCheckout(true);
+    } catch (err) {
+      alert('Error al cancelar el pago');
     }
   };
 
@@ -195,18 +246,65 @@ function Tienda() {
                 </div>
               ))}
               <h3>Total: ${getTotal().toFixed(2)}</h3>
-              <button type="submit" className="btn-checkout">Confirmar Compra</button>
+              <button type="submit" className="btn-checkout">Proceder al Pago</button>
             </form>
           </div>
         </div>
       )}
 
-      {checkoutSuccess && (
-        <div className="cart-overlay" onClick={() => setCheckoutSuccess(false)}>
-          <div className="success-modal" onClick={e => e.stopPropagation()}>
-            <h2>✓ Compra Realizada</h2>
-            <p>Su compra ha sido procesada con éxito.</p>
-            <button onClick={() => setCheckoutSuccess(false)}>Aceptar</button>
+      {taypiData && (
+        <div className="cart-overlay">
+          <div className="checkout-modal" style={{ textAlign: 'center' }}>
+            <div className="cart-header">
+              <h2>Pagar con Yape</h2>
+              <button onClick={cancelPayment}>✕</button>
+            </div>
+            <p>Escanea el código QR con tu app de Yape</p>
+            {taypiData.qr_image && (
+              <img src={`data:image/png;base64,${taypiData.qr_image}`} alt="QR Yape" style={{ margin: '20px auto', display: 'block' }} />
+            )}
+            <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#2ecc71' }}>${parseFloat(taypiData.amount).toFixed(2)}</p>
+            <p>Referencia: {taypiData.reference}</p>
+            <button className="btn-checkout" onClick={checkPaymentStatus} style={{ marginTop: 20 }}>
+              Ya pagué - Verificar pago
+            </button>
+            <button onClick={cancelPayment} style={{ marginTop: 10, background: '#e74c3c' }} className="btn-checkout">
+              Cancelar pago
+            </button>
+          </div>
+        </div>
+      )}
+
+      {voucher && (
+        <div className="cart-overlay" onClick={() => setVoucher(null)}>
+          <div className="voucher-modal" onClick={e => e.stopPropagation()}>
+            <div className="voucher-header">
+              <h2>✓ Compra Realizada</h2>
+              <button onClick={() => setVoucher(null)}>✕</button>
+            </div>
+            <div className="voucher-content">
+              <h3>BOLETA DE VENTA</h3>
+              <p><strong>N° Venta:</strong> {voucher.venta_id}</p>
+              <p><strong>Fecha:</strong> {voucher.fecha}</p>
+              <hr/>
+              <p><strong>Cliente:</strong> {voucher.cliente.nombres} {voucher.cliente.apellidos}</p>
+              <p><strong>Dirección:</strong> {voucher.cliente.direccion}</p>
+              <p><strong>Teléfono:</strong> {voucher.cliente.telefono}</p>
+              <hr/>
+              <h4>Productos:</h4>
+              {voucher.productos.map(item => (
+                <div key={item.id_producto} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{item.descripcion} x {item.cantidad}</span>
+                  <span>${(item.precio * item.cantidad).toFixed(2)}</span>
+                </div>
+              ))}
+              <hr/>
+              <h3>Total: ${voucher.total.toFixed(2)}</h3>
+              <p><strong>Método de pago:</strong> Yape (ID: {voucher.payment_id})</p>
+            </div>
+            <button className="btn-checkout" onClick={() => setVoucher(null)} style={{ marginTop: 20 }}>
+              Aceptar
+            </button>
           </div>
         </div>
       )}

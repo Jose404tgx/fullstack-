@@ -58,9 +58,11 @@ const verifyAdminToken = (req, res, next) => {
     }
 };
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bezcodjjxvwqimvejegh.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlemNvZGpqeHZ3cWltdmVqZWdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg1ODIwMCwiZXhwIjoyMDkyNDM0MjAwfQ.dG1xmikYXDd2ciRt7VtAHpZ05fEqErOzBb8363O6LwE';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const SUPABASE_BUCKET = 'productos';
+const TAYPI_API_URL = process.env.TAYPI_API_URL;
+const TAYPI_SECRET_KEY = process.env.TAYPI_SECRET_KEY;
 
 const headers = {
     'apikey': SUPABASE_SERVICE_KEY,
@@ -554,6 +556,70 @@ app.post('/detalle_venta', verifyAdminToken, async (req, res) => {
         const text = await response.text();
         if (!response.ok) return res.status(response.status).json({ error: text });
         res.status(201).json(JSON.parse(text)[0]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==================== TAYPI PAYMENT ENDPOINTS ====================
+
+app.post('/taypi/create', async (req, res) => {
+    try {
+        const { amount, reference, description } = req.body;
+        if (!amount || !reference) return res.status(400).json({ error: 'Monto y referencia son requeridos' });
+        const timestamp = Math.floor(Date.now() / 1000).toString();
+        const response = await fetch(`${TAYPI_API_URL}/payments`, {
+            method: 'POST',
+            headers: {
+                'Taypi-Signature': TAYPI_SECRET_KEY,
+                'Taypi-Timestamp': timestamp,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                amount: amount.toFixed(2),
+                reference: reference,
+                description: description || 'Compra en tienda online'
+            })
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Error al crear pago' });
+        res.json(data.data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/taypi/payment/:id', async (req, res) => {
+    try {
+        const timestamp = Math.floor(Date.now() / 1000).toString();
+        const response = await fetch(`${TAYPI_API_URL}/payments/${req.params.id}`, {
+            method: 'GET',
+            headers: {
+                'Taypi-Signature': TAYPI_SECRET_KEY,
+                'Taypi-Timestamp': timestamp
+            }
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Error al consultar pago' });
+        res.json(data.data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/taypi/cancel/:id', async (req, res) => {
+    try {
+        const timestamp = Math.floor(Date.now() / 1000).toString();
+        const response = await fetch(`${TAYPI_API_URL}/payments/${req.params.id}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Taypi-Signature': TAYPI_SECRET_KEY,
+                'Taypi-Timestamp': timestamp
+            }
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Error al cancelar pago' });
+        res.json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
