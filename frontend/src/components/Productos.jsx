@@ -8,8 +8,9 @@ export default function Productos() {
   const [form, setForm] = useState({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' });
   const [editId, setEditId] = useState(null);
   const [msg, setMsg] = useState('');
-  const [uploading, setUploading] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [file, setFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
   const [showForm, setShowForm] = useState(false);
 
   const load = () => {
@@ -19,41 +20,30 @@ export default function Productos() {
   };
   useEffect(() => { load(); }, []);
 
-  const uploadImage = async () => {
-    if (!file) return form.imagenes;
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('imagen', file);
-      const res = await fetch('/upload', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
-        body: formData
-      });
-      const data = await res.json();
-      setUploading(false);
-      if (data.url) return data.url;
-      throw new Error(data.error || 'Error al subir imagen');
-    } catch (err) {
-      setUploading(false);
-      throw err;
-    }
+  const handleFileChange = (e) => {
+    const selected = e.target.files[0];
+    if (!selected) return;
+    setFile(selected);
+    setConverting(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setForm({ ...form, imagenes: reader.result });
+      setPreviewUrl(reader.result);
+      setConverting(false);
+    };
+    reader.readAsDataURL(selected);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      let imagenUrl = form.imagenes;
-      if (file) {
-        imagenUrl = await uploadImage();
-      }
       const payload = {
         descripcion: form.descripcion,
         precio: parseFloat(form.precio),
         stock: parseInt(form.stock),
         id_categoria: parseInt(form.id_categoria),
         id_proveedor: parseInt(form.id_proveedor),
-        imagenes: imagenUrl || null
+        imagenes: form.imagenes || null
       };
       if (editId) {
         await api.updateProducto(editId, payload);
@@ -64,6 +54,7 @@ export default function Productos() {
       }
       setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' });
       setFile(null);
+      setPreviewUrl('');
       setEditId(null);
       setShowForm(false);
       load();
@@ -79,6 +70,7 @@ export default function Productos() {
       id_proveedor: item.id_proveedor.toString(),
       imagenes: item.imagenes || ''
     });
+    setPreviewUrl(item.imagenes || '');
     setEditId(item.id_producto);
     setFile(null);
     setShowForm(true);
@@ -96,7 +88,7 @@ export default function Productos() {
     <div>
       <div className="section-header">
         <h2>Productos</h2>
-        <button className="btn btn-primary" onClick={() => { setShowForm(true); setEditId(null); setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' }); setFile(null); }}>
+        <button className="btn btn-primary" onClick={() => { setShowForm(true); setEditId(null); setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' }); setFile(null); setPreviewUrl(''); }}>
           Nuevo Producto
         </button>
       </div>
@@ -117,15 +109,15 @@ export default function Productos() {
               {proveedores.map(p => <option key={p.id_proveedor} value={p.id_proveedor}>{p.razonsocial}</option>)}
             </select>
             <div>
-              <input type="file" accept="image/*" onChange={e => setFile(e.target.files[0])} />
-              <div className="img-upload-area" style={{ marginTop: 12 }}>
-                {form.imagenes && !file && <img src={form.imagenes} alt="preview" />}
-                {file && <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>Archivo: {file.name}</p>}
-              </div>
+              <input type="file" accept="image/*" onChange={handleFileChange} />
+              {converting && <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem', marginTop: 8 }}>Procesando imagen...</p>}
+              {previewUrl && !converting && (
+                <img src={previewUrl} alt="preview" className="img-preview" style={{ width: 100, height: 100, marginTop: 12 }} />
+              )}
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
-              <button type="submit" className="btn btn-success" disabled={uploading}>{uploading ? 'Subiendo...' : (editId ? 'Actualizar' : 'Crear')}</button>
-              <button type="button" className="btn btn-secondary" onClick={() => { setShowForm(false); setEditId(null); setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' }); setFile(null); }}>Cancelar</button>
+              <button type="submit" className="btn btn-success">{editId ? 'Actualizar' : 'Crear'}</button>
+              <button type="button" className="btn btn-secondary" onClick={() => { setShowForm(false); setEditId(null); setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' }); setFile(null); setPreviewUrl(''); }}>Cancelar</button>
             </div>
           </form>
         </div>
