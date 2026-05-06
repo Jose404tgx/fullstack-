@@ -568,7 +568,6 @@ app.delete('/detalle_venta/:id', verifyAdminToken, async (req, res) => {
 });
 
 // ==================== SERVE REACT APP ====================
-const fs = require('fs');
 const distPath = path.join(__dirname, 'frontend', 'dist');
 const indexPath = path.join(distPath, 'index.html');
 
