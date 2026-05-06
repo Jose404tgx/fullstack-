@@ -1,7 +1,8 @@
 const express = require('express');
 const path = require('path');
-const formidable = require('formidable');
+const multer = require('multer');
 const fs = require('fs');
+const upload = multer({ storage: multer.memoryStorage() });
 const app = express();
 const port = process.env.PORT || 3127;
 
@@ -69,24 +70,28 @@ const headers = {
 };
 
 // Upload image to Supabase Storage
-app.post('/upload', verifyAdminToken, async (req, res) => {
+app.post('/upload', verifyAdminToken, upload.single('imagen'), async (req, res) => {
     try {
-        const form = formidable({ multiples: false });
-        const [fields, files] = await form.parse(req);
-        const file = files.imagen?.[0] || files.imagen;
-        if (!file) return res.status(400).json({ error: 'No se envió ninguna imagen' });
-        const fileData = fs.readFileSync(file.filepath);
-        const fileName = `producto_${Date.now()}_${file.originalFilename}`;
+        if (!req.file) return res.status(400).json({ error: 'No se envió ninguna imagen' });
+        const fileName = `producto_${Date.now()}_${req.file.originalname}`;
         const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${fileName}`, {
             method: 'POST',
             headers: {
                 'apikey': SUPABASE_SERVICE_KEY,
                 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-                'Content-Type': file.mimetype || 'image/jpeg',
+                'Content-Type': req.file.mimetype || 'image/jpeg',
                 'x-upsert': 'false'
             },
-            body: fileData
+            body: req.file.buffer
         });
+        const uploadText = await uploadRes.text();
+        if (!uploadRes.ok) return res.status(400).json({ error: 'Error al subir imagen: ' + uploadText });
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${fileName}`;
+        res.json({ url: publicUrl });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
         fs.unlinkSync(file.filepath);
         const uploadText = await uploadRes.text();
         if (!uploadRes.ok) return res.status(400).json({ error: 'Error al subir imagen: ' + uploadText });

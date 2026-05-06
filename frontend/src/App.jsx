@@ -31,40 +31,34 @@ function AdminLayout() {
   ];
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: 20, fontFamily: 'Arial, sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+    <div className="admin-layout">
+      <header className="admin-header">
         <h1>Panel Administrativo</h1>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span>Bienvenido, {localStorage.getItem('adminUser')}</span>
-          <button onClick={handleLogout} style={{ padding: '8px 16px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-            Cerrar Sesión
-          </button>
+        <div className="admin-header-right">
+          <Link to="/" className="back-home-btn">← Volver a la tienda</Link>
+          <span className="admin-user">Bienvenido, {localStorage.getItem('adminUser')}</span>
+          <button onClick={handleLogout} className="logout-btn">Cerrar Sesión</button>
         </div>
-      </div>
-      <nav style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+      </header>
+      <nav className="admin-nav">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '8px 16px',
-              background: activeTab === tab.id ? '#007bff' : '#f0f0f0',
-              color: activeTab === tab.id ? 'white' : 'black',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer'
-            }}
+            className={activeTab === tab.id ? 'tab-btn active' : 'tab-btn'}
           >
             {tab.label}
           </button>
         ))}
       </nav>
-      {activeTab === 'clientes' && <Clientes />}
-      {activeTab === 'categorias' && <Categorias />}
-      {activeTab === 'proveedores' && <Proveedores />}
-      {activeTab === 'productos' && <Productos />}
-      {activeTab === 'ventas' && <Ventas />}
-      {activeTab === 'detalles' && <DetalleVentas />}
+      <main className="admin-content">
+        {activeTab === 'clientes' && <Clientes />}
+        {activeTab === 'categorias' && <Categorias />}
+        {activeTab === 'proveedores' && <Proveedores />}
+        {activeTab === 'productos' && <Productos />}
+        {activeTab === 'ventas' && <Ventas />}
+        {activeTab === 'detalles' && <DetalleVentas />}
+      </main>
     </div>
   );
 }
