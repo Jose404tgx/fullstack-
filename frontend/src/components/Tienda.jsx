@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import './Tienda.css';
 
 function Tienda() {
@@ -12,6 +14,7 @@ function Tienda() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [cliente, setCliente] = useState({ nombres: '', apellidos: '', direccion: '', telefono: '' });
   const [voucher, setVoucher] = useState(null);
+  const voucherRef = useRef(null);
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -90,6 +93,21 @@ function Tienda() {
     } catch (err) {
       alert('Error al registrar la venta: ' + err.message);
     }
+  };
+
+  const downloadVoucher = async () => {
+    if (!voucherRef.current) return;
+    const canvas = await html2canvas(voucherRef.current, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+    const imgWidth = 210;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+    pdf.save(`Boleta-${voucher.venta_id}.pdf`);
   };
 
   if (loading) return <div className="loading">Cargando productos...</div>;
@@ -226,7 +244,7 @@ function Tienda() {
               <h2>Compra Realizada</h2>
               <button onClick={() => setVoucher(null)}>✕</button>
             </div>
-            <div className="voucher-content">
+            <div className="voucher-content" ref={voucherRef}>
               <h3>BOLETA DE VENTA</h3>
               <p><strong>N° Venta:</strong> {voucher.venta_id}</p>
               <p><strong>Fecha:</strong> {voucher.fecha}</p>
@@ -248,9 +266,14 @@ function Tienda() {
                 <span>${voucher.total.toFixed(2)}</span>
               </div>
             </div>
-            <button className="btn-checkout" onClick={() => setVoucher(null)} style={{ marginTop: 20 }}>
-              Aceptar
-            </button>
+            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+              <button className="btn-checkout" onClick={downloadVoucher} style={{ flex: 1 }}>
+                Descargar PDF
+              </button>
+              <button className="btn-checkout" onClick={() => setVoucher(null)} style={{ flex: 1, background: 'var(--gray-500)' }}>
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
