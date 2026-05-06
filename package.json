@@ -1,0 +1,25 @@
+{
+  "name": "backend_js",
+  "version": "1.0.0",
+  "description": "backend con javascript",
+  "license": "MIT",
+  "author": "chavez paez jose luis",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "build": "cd frontend && npm install && npm run build",
+    "predeploy": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "mysql2": "^3.22.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
