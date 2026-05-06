@@ -72,27 +72,39 @@ const headers = {
 };
 
 // Upload image to Supabase Storage
-app.post('/upload', verifyAdminToken, upload.single('imagen'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ error: 'No se envió ninguna imagen' });
-        const fileName = `producto_${Date.now()}_${req.file.originalname}`;
-        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${fileName}`, {
-            method: 'POST',
-            headers: {
-                'apikey': SUPABASE_SERVICE_KEY,
-                'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-                'Content-Type': req.file.mimetype || 'image/jpeg',
-                'x-upsert': 'false'
-            },
-            body: req.file.buffer
-        });
-        const uploadText = await uploadRes.text();
-        if (!uploadRes.ok) return res.status(400).json({ error: 'Error al subir imagen: ' + uploadText });
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${fileName}`;
-        res.json({ url: publicUrl });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+app.post('/upload', verifyAdminToken, (req, res) => {
+    upload.single('imagen')(req, res, async (err) => {
+        if (err) return res.status(500).json({ error: 'Error al procesar archivo' });
+        try {
+            if (!req.file) return res.status(400).json({ error: 'No se envió ninguna imagen' });
+            const fileName = `producto_${Date.now()}_${req.file.originalname}`;
+            const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${fileName}`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_SERVICE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+                    'Content-Type': req.file.mimetype || 'image/jpeg',
+                    'x-upsert': 'false'
+                },
+                body: req.file.buffer
+            });
+            const uploadText = await uploadRes.text();
+            if (!uploadRes.ok) return res.status(400).json({ error: 'Error al subir imagen: ' + uploadText });
+            const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${fileName}`;
+            res.json({ url: publicUrl });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+});
+            const uploadText = await uploadRes.text();
+            if (!uploadRes.ok) return res.status(400).json({ error: 'Error al subir imagen: ' + uploadText });
+            const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${fileName}`;
+            res.json({ url: publicUrl });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    })();
 });
         fs.unlinkSync(file.filepath);
         const uploadText = await uploadRes.text();
