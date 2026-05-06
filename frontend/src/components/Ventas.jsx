@@ -58,63 +58,65 @@ export default function Ventas() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ margin: 0 }}>Ventas</h2>
-        <button onClick={() => setShowCreate(true)} style={{ padding: '8px 16px', background: '#2ecc71', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-          + Nueva Venta
+      <div className="section-header">
+        <h2>Ventas</h2>
+        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+          Nueva Venta
         </button>
       </div>
-      {msg && <p style={{ color: 'green' }}>{msg}</p>}
+      {msg && <div className="status-message status-success">{msg}</div>}
 
       {showCreate && (
-        <div style={{ background: 'white', padding: 20, borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 20 }}>
+        <div className="card">
           <h3>Nueva Venta</h3>
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 15, maxWidth: 600 }}>
-            <select value={form.id_cliente} onChange={e => setForm({...form, id_cliente: e.target.value})} required>
+          <form onSubmit={handleSubmit} className="form-grid" style={{ maxWidth: '100%' }}>
+            <select className="form-input" value={form.id_cliente} onChange={e => setForm({...form, id_cliente: e.target.value})} required style={{ maxWidth: 400 }}>
               <option value="">Seleccionar Cliente</option>
               {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombres} {c.apellidos}</option>)}
             </select>
-            <h4>Detalles</h4>
-            {form.detalles.map((d, i) => (
-              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <select value={d.id_producto} onChange={e => updateDetalle(i, 'id_producto', e.target.value)} style={{ flex: 1 }}>
-                  <option value="">Producto</option>
-                  {productos.map(p => <option key={p.id_producto} value={p.id_producto}>{p.descripcion} - S/.{p.precio}</option>)}
-                </select>
-                <input placeholder="Cant" type="number" value={d.cantidad} onChange={e => updateDetalle(i, 'cantidad', e.target.value)} style={{ width: 80 }} />
-                <button type="button" onClick={() => removeDetalle(i)} style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', padding: '6px 12px' }}>X</button>
-              </div>
-            ))}
-            <button type="button" onClick={addDetalle} style={{ background: '#3498db', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', padding: '8px 16px' }}>
-              + Agregar Producto
-            </button>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button type="submit" style={{ background: '#2ecc71', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', padding: '10px 20px' }}>Crear Venta</button>
-              <button type="button" onClick={() => { setShowCreate(false); setForm({ id_cliente: '', detalles: [] }); }} style={{ background: '#95a5a6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', padding: '10px 20px' }}>Cancelar</button>
+            <div>
+              <h3>Detalles</h3>
+              {form.detalles.map((d, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12, maxWidth: 600 }}>
+                  <select className="form-input" value={d.id_producto} onChange={e => updateDetalle(i, 'id_producto', e.target.value)}>
+                    <option value="">Producto</option>
+                    {productos.map(p => <option key={p.id_producto} value={p.id_producto}>{p.descripcion} - S/.{p.precio}</option>)}
+                  </select>
+                  <input className="form-input" placeholder="Cant" type="number" value={d.cantidad} onChange={e => updateDetalle(i, 'cantidad', e.target.value)} style={{ width: 80 }} />
+                  <button type="button" className="btn btn-danger btn-sm" onClick={() => removeDetalle(i)}>Eliminar</button>
+                </div>
+              ))}
+              <button type="button" className="btn btn-secondary" onClick={addDetalle} style={{ marginTop: 12 }}>
+                Agregar Producto
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button type="submit" className="btn btn-success">Crear Venta</button>
+              <button type="button" className="btn btn-secondary" onClick={() => { setShowCreate(false); setForm({ id_cliente: '', detalles: [] }); }}>Cancelar</button>
             </div>
           </form>
         </div>
       )}
 
-      <table border="1" cellPadding="8" style={{ width: '100%', borderCollapse: 'collapse', background: 'white', borderRadius: 8, overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <thead>
-          <tr style={{ background: '#667eea', color: 'white' }}>
-            <th>ID</th><th>Fecha</th><th>Cliente</th><th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map(item => (
-            <tr key={item.id_venta} style={{ borderBottom: '1px solid #f0f0f0' }}>
-              <td>{item.id_venta}</td>
-              <td>{new Date(item.fecha).toLocaleString()}</td>
-              <td>{item.clientes ? `${item.clientes.nombres} ${item.clientes.apellidos}` : item.id_cliente}</td>
-              <td>
-                <button onClick={() => handleDelete(item.id_venta)} style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', padding: '6px 12px' }}>Eliminar</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Fecha</th><th>Cliente</th><th>Acciones</th></tr>
+          </thead>
+          <tbody>
+            {data.map(item => (
+              <tr key={item.id_venta}>
+                <td>{item.id_venta}</td>
+                <td>{new Date(item.fecha).toLocaleString()}</td>
+                <td>{item.clientes ? `${item.clientes.nombres} ${item.clientes.apellidos}` : item.id_cliente}</td>
+                <td>
+                  <button className="btn btn-danger btn-sm" onClick={() => handleDelete(item.id_venta)}>Eliminar</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

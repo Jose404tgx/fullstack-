@@ -6,6 +6,7 @@ export default function Categorias() {
   const [form, setForm] = useState({ descripcion: '' });
   const [editId, setEditId] = useState(null);
   const [msg, setMsg] = useState('');
+  const [showForm, setShowForm] = useState(false);
 
   const load = () => api.fetchCategorias().then(setData);
   useEffect(() => { load(); }, []);
@@ -22,6 +23,7 @@ export default function Categorias() {
       }
       setForm({ descripcion: '' });
       setEditId(null);
+      setShowForm(false);
       load();
     } catch (err) { setMsg('Error: ' + err.message); }
   };
@@ -29,6 +31,7 @@ export default function Categorias() {
   const handleEdit = (item) => {
     setForm({ descripcion: item.descripcion });
     setEditId(item.id_categoria);
+    setShowForm(true);
   };
 
   const handleDelete = async (id) => {
@@ -41,27 +44,43 @@ export default function Categorias() {
 
   return (
     <div>
-      <h2>Categorías</h2>
-      {msg && <p style={{ color: 'green' }}>{msg}</p>}
-      <form onSubmit={handleSubmit} style={{ marginBottom: 20, display: 'grid', gap: 8, maxWidth: 400 }}>
-        <input placeholder="Descripción" value={form.descripcion} onChange={e => setForm({...form, descripcion: e.target.value})} required />
-        <button type="submit">{editId ? 'Actualizar' : 'Crear'}</button>
-        {editId && <button type="button" onClick={() => { setEditId(null); setForm({ descripcion: '' }); }}>Cancelar</button>}
-      </form>
-      <table border="1" cellPadding="8" style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th>ID</th><th>Descripción</th><th>Acciones</th></tr></thead>
-        <tbody>
-          {data.map(item => (
-            <tr key={item.id_categoria}>
-              <td>{item.id_categoria}</td><td>{item.descripcion}</td>
-              <td>
-                <button onClick={() => handleEdit(item)}>Editar</button>
-                <button onClick={() => handleDelete(item.id_categoria)} style={{ marginLeft: 5 }}>Eliminar</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="section-header">
+        <h2>Categorías</h2>
+        <button className="btn btn-primary" onClick={() => { setShowForm(true); setEditId(null); setForm({ descripcion: '' }); }}>
+          Nueva Categoría
+        </button>
+      </div>
+      {msg && <div className="status-message status-success">{msg}</div>}
+      {showForm && (
+        <div className="card">
+          <h3>{editId ? 'Editar Categoría' : 'Nueva Categoría'}</h3>
+          <form onSubmit={handleSubmit} className="form-grid">
+            <input className="form-input" placeholder="Descripción" value={form.descripcion} onChange={e => setForm({...form, descripcion: e.target.value})} required />
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button type="submit" className="btn btn-success">{editId ? 'Actualizar' : 'Crear'}</button>
+              <button type="button" className="btn btn-secondary" onClick={() => { setShowForm(false); setEditId(null); setForm({ descripcion: '' }); }}>Cancelar</button>
+            </div>
+          </form>
+        </div>
+      )}
+      <div className="table-container">
+        <table>
+          <thead><tr><th>ID</th><th>Descripción</th><th>Acciones</th></tr></thead>
+          <tbody>
+            {data.map(item => (
+              <tr key={item.id_categoria}>
+                <td>{item.id_categoria}</td><td>{item.descripcion}</td>
+                <td>
+                  <div className="action-btns">
+                    <button className="btn btn-secondary btn-sm" onClick={() => handleEdit(item)}>Editar</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(item.id_categoria)}>Eliminar</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

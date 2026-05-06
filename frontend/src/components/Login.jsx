@@ -24,7 +24,6 @@ function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        // Guardar el token exactamente como viene
         localStorage.setItem('adminToken', data.token);
         localStorage.setItem('adminUser', username);
         navigate('/admin');
@@ -40,26 +39,29 @@ function Login() {
 
   return (
     <div className="login-page">
-      <Link to="/" className="back-btn">← Volver a la tienda</Link>
+      <Link to="/" className="back-btn">Volver a la tienda</Link>
       <div className="login-card">
-        <h2>Acceso Administrativo</h2>
+        <h2>Bienvenido</h2>
+        <p className="login-subtitle">Ingresa tus credenciales para acceder al panel</p>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Usuario:</label>
+            <label>Usuario</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              placeholder="Ingresa tu usuario"
             />
           </div>
           <div className="form-group">
-            <label>Contraseña:</label>
+            <label>Contraseña</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              placeholder="Ingresa tu contraseña"
             />
           </div>
           {error && <div className="error-message">{error}</div>}

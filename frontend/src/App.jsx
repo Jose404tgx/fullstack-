@@ -33,11 +33,11 @@ function AdminLayout() {
   return (
     <div className="admin-layout">
       <header className="admin-header">
-        <h1>Panel Administrativo</h1>
+        <h1>Panel Admin</h1>
         <div className="admin-header-right">
-          <Link to="/" className="back-home-btn">← Volver a la tienda</Link>
-          <span className="admin-user">Bienvenido, {localStorage.getItem('adminUser')}</span>
-          <button onClick={handleLogout} className="logout-btn">Cerrar Sesión</button>
+          <Link to="/" className="back-home-btn">Tienda</Link>
+          <span className="admin-user">{localStorage.getItem('adminUser')}</span>
+          <button onClick={handleLogout} className="logout-btn">Salir</button>
         </div>
       </header>
       <nav className="admin-nav">

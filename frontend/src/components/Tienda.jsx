@@ -103,11 +103,11 @@ function Tienda() {
             <h1>Nuestra Tienda</h1>
             <p>Productos frescos y de calidad</p>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div className="header-actions">
             <button className="cart-btn" onClick={() => setShowCart(true)}>
-              🛒 Carrito ({getCartCount()})
+              Carrito ({getCartCount()})
             </button>
-            <Link to="/login" className="admin-btn">Admin</Link>
+            <Link to="/login" className="admin-link">Admin</Link>
           </div>
         </div>
       </header>
@@ -115,16 +115,24 @@ function Tienda() {
       <div className="productos-grid">
         {productos.map(producto => (
           <div key={producto.id_producto} className="producto-card">
-            {producto.imagenes && (
-              <img src={producto.imagenes} alt={producto.descripcion} className="producto-imagen" />
-            )}
+            <div className="producto-imagen-wrapper">
+              {producto.imagenes ? (
+                <img src={producto.imagenes} alt={producto.descripcion} className="producto-imagen" />
+              ) : (
+                <div className="producto-imagen-placeholder">Sin imagen</div>
+              )}
+            </div>
             <div className="producto-info">
               <h3>{producto.descripcion}</h3>
-              <p className="categoria">{producto.categoria?.descripcion}</p>
-              <p className="precio">${producto.precio.toFixed(2)}</p>
-              <p className="stock">Stock: {producto.stock}</p>
+              {producto.categoria?.descripcion && (
+                <span className="categoria">{producto.categoria.descripcion}</span>
+              )}
+              <div className="precio-row">
+                <span className="precio">${producto.precio.toFixed(2)}</span>
+                <span className="stock">{producto.stock} disponibles</span>
+              </div>
               <button
-                className="btn-comprar"
+                className="btn-agregar"
                 disabled={producto.stock === 0}
                 onClick={() => addToCart(producto)}
               >
@@ -143,27 +151,32 @@ function Tienda() {
               <button onClick={() => setShowCart(false)}>✕</button>
             </div>
             {cart.length === 0 ? (
-              <p>El carrito está vacío</p>
+              <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--gray-500)' }}>
+                El carrito está vacío
+              </div>
             ) : (
               <>
                 <div className="cart-items">
                   {cart.map(item => (
                     <div key={item.id_producto} className="cart-item">
-                      <div>
+                      <div className="cart-item-info">
                         <h4>{item.descripcion}</h4>
-                        <p>${item.precio.toFixed(2)} x {item.cantidad}</p>
+                        <p>${(item.precio * item.cantidad).toFixed(2)}</p>
                       </div>
-                      <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                        <button onClick={() => updateCantidad(item.id_producto, item.cantidad - 1)}>-</button>
-                        <span>{item.cantidad}</span>
-                        <button onClick={() => updateCantidad(item.id_producto, item.cantidad + 1)}>+</button>
-                        <button onClick={() => removeFromCart(item.id_producto)} style={{ color: 'red' }}>✕</button>
+                      <div className="cart-item-actions">
+                        <button className="qty-btn" onClick={() => updateCantidad(item.id_producto, item.cantidad - 1)}>-</button>
+                        <span className="qty-value">{item.cantidad}</span>
+                        <button className="qty-btn" onClick={() => updateCantidad(item.id_producto, item.cantidad + 1)}>+</button>
+                        <button className="qty-btn remove-btn" onClick={() => removeFromCart(item.id_producto)}>✕</button>
                       </div>
                     </div>
                   ))}
                 </div>
                 <div className="cart-footer">
-                  <h3>Total: ${getTotal().toFixed(2)}</h3>
+                  <div className="cart-total">
+                    <h3>Total</h3>
+                    <span className="total-price">${getTotal().toFixed(2)}</span>
+                  </div>
                   <button className="btn-checkout" onClick={() => { setShowCart(false); setShowCheckout(true); }}>
                     Finalizar compra
                   </button>
@@ -183,18 +196,23 @@ function Tienda() {
             </div>
             <form onSubmit={handleCheckout} className="checkout-form">
               <h3>Datos del Cliente</h3>
-              <input placeholder="Nombres" value={cliente.nombres} onChange={e => setCliente({...cliente, nombres: e.target.value})} required />
-              <input placeholder="Apellidos" value={cliente.apellidos} onChange={e => setCliente({...cliente, apellidos: e.target.value})} required />
-              <input placeholder="Dirección" value={cliente.direccion} onChange={e => setCliente({...cliente, direccion: e.target.value})} required />
-              <input placeholder="Teléfono" value={cliente.telefono} onChange={e => setCliente({...cliente, telefono: e.target.value})} required />
+              <input className="form-input" placeholder="Nombres" value={cliente.nombres} onChange={e => setCliente({...cliente, nombres: e.target.value})} required />
+              <input className="form-input" placeholder="Apellidos" value={cliente.apellidos} onChange={e => setCliente({...cliente, apellidos: e.target.value})} required />
+              <input className="form-input" placeholder="Dirección" value={cliente.direccion} onChange={e => setCliente({...cliente, direccion: e.target.value})} required />
+              <input className="form-input" placeholder="Teléfono" value={cliente.telefono} onChange={e => setCliente({...cliente, telefono: e.target.value})} required />
               <h3>Resumen</h3>
-              {cart.map(item => (
-                <div key={item.id_producto} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{item.descripcion} x {item.cantidad}</span>
-                  <span>${(item.precio * item.cantidad).toFixed(2)}</span>
+              <div className="checkout-summary">
+                {cart.map(item => (
+                  <div key={item.id_producto} className="checkout-summary-item">
+                    <span>{item.descripcion} x {item.cantidad}</span>
+                    <span>${(item.precio * item.cantidad).toFixed(2)}</span>
+                  </div>
+                ))}
+                <div className="checkout-total">
+                  <span>Total</span>
+                  <span>${getTotal().toFixed(2)}</span>
                 </div>
-              ))}
-              <h3>Total: ${getTotal().toFixed(2)}</h3>
+              </div>
               <button type="submit" className="btn-checkout">Registrar Venta</button>
             </form>
           </div>
@@ -205,7 +223,7 @@ function Tienda() {
         <div className="cart-overlay" onClick={() => setVoucher(null)}>
           <div className="voucher-modal" onClick={e => e.stopPropagation()}>
             <div className="voucher-header">
-              <h2>✓ Compra Realizada</h2>
+              <h2>Compra Realizada</h2>
               <button onClick={() => setVoucher(null)}>✕</button>
             </div>
             <div className="voucher-content">
@@ -219,13 +237,16 @@ function Tienda() {
               <hr/>
               <h4>Productos:</h4>
               {voucher.productos.map(item => (
-                <div key={item.id_producto} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div key={item.id_producto} className="checkout-summary-item">
                   <span>{item.descripcion} x {item.cantidad}</span>
                   <span>${(item.precio * item.cantidad).toFixed(2)}</span>
                 </div>
               ))}
               <hr/>
-              <h3>Total: ${voucher.total.toFixed(2)}</h3>
+              <div className="checkout-total">
+                <span>Total</span>
+                <span>${voucher.total.toFixed(2)}</span>
+              </div>
             </div>
             <button className="btn-checkout" onClick={() => setVoucher(null)} style={{ marginTop: 20 }}>
               Aceptar

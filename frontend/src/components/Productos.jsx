@@ -10,6 +10,7 @@ export default function Productos() {
   const [msg, setMsg] = useState('');
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState(null);
+  const [showForm, setShowForm] = useState(false);
 
   const load = () => {
     api.fetchProductosAdmin().then(setData);
@@ -64,6 +65,7 @@ export default function Productos() {
       setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' });
       setFile(null);
       setEditId(null);
+      setShowForm(false);
       load();
     } catch (err) { setMsg('Error: ' + err.message); }
   };
@@ -79,6 +81,7 @@ export default function Productos() {
     });
     setEditId(item.id_producto);
     setFile(null);
+    setShowForm(true);
   };
 
   const handleDelete = async (id) => {
@@ -91,44 +94,66 @@ export default function Productos() {
 
   return (
     <div>
-      <h2>Productos</h2>
-      {msg && <p style={{ color: 'green' }}>{msg}</p>}
-      <form onSubmit={handleSubmit} style={{ marginBottom: 20, display: 'grid', gap: 8, maxWidth: 400 }}>
-        <input placeholder="Descripción" value={form.descripcion} onChange={e => setForm({...form, descripcion: e.target.value})} required />
-        <input placeholder="Precio" type="number" value={form.precio} onChange={e => setForm({...form, precio: e.target.value})} required />
-        <input placeholder="Stock" type="number" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} required />
-        <select value={form.id_categoria} onChange={e => setForm({...form, id_categoria: e.target.value})} required>
-          <option value="">Seleccionar Categoría</option>
-          {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.descripcion}</option>)}
-        </select>
-        <select value={form.id_proveedor} onChange={e => setForm({...form, id_proveedor: e.target.value})} required>
-          <option value="">Seleccionar Proveedor</option>
-          {proveedores.map(p => <option key={p.id_proveedor} value={p.id_proveedor}>{p.razonsocial}</option>)}
-        </select>
-        <input type="file" accept="image/*" onChange={e => setFile(e.target.files[0])} />
-        {form.imagenes && !file && <img src={form.imagenes} alt="preview" style={{ width: 100, height: 100, objectFit: 'cover' }} />}
-        {file && <p>Archivo: {file.name}</p>}
-        <button type="submit" disabled={uploading}>{uploading ? 'Subiendo...' : (editId ? 'Actualizar' : 'Crear')}</button>
-        {editId && <button type="button" onClick={() => { setEditId(null); setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' }); setFile(null); }}>Cancelar</button>}
-      </form>
-      <table border="1" cellPadding="8" style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th>ID</th><th>Imagen</th><th>Descripción</th><th>Precio</th><th>Stock</th><th>Categoría</th><th>Proveedor</th><th>Acciones</th></tr></thead>
-        <tbody>
-          {data.map(item => (
-            <tr key={item.id_producto}>
-              <td>{item.id_producto}</td>
-              <td>{item.imagenes ? <img src={item.imagenes} alt={item.descripcion} style={{ width: 50, height: 50, objectFit: 'cover' }} /> : 'Sin imagen'}</td>
-              <td>{item.descripcion}</td><td>{item.precio}</td><td>{item.stock}</td>
-              <td>{item.categoria?.descripcion || item.id_categoria}</td>
-               <td>{item.proveedor?.razonsocial || item.id_proveedor}</td>
-              <td>
-                <button onClick={() => handleEdit(item)}>Editar</button>
-                <button onClick={() => handleDelete(item.id_producto)} style={{ marginLeft: 5 }}>Eliminar</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="section-header">
+        <h2>Productos</h2>
+        <button className="btn btn-primary" onClick={() => { setShowForm(true); setEditId(null); setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' }); setFile(null); }}>
+          Nuevo Producto
+        </button>
+      </div>
+      {msg && <div className="status-message status-success">{msg}</div>}
+      {showForm && (
+        <div className="card">
+          <h3>{editId ? 'Editar Producto' : 'Nuevo Producto'}</h3>
+          <form onSubmit={handleSubmit} className="form-grid">
+            <input className="form-input" placeholder="Descripción" value={form.descripcion} onChange={e => setForm({...form, descripcion: e.target.value})} required />
+            <input className="form-input" placeholder="Precio" type="number" value={form.precio} onChange={e => setForm({...form, precio: e.target.value})} required />
+            <input className="form-input" placeholder="Stock" type="number" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} required />
+            <select className="form-input" value={form.id_categoria} onChange={e => setForm({...form, id_categoria: e.target.value})} required>
+              <option value="">Seleccionar Categoría</option>
+              {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.descripcion}</option>)}
+            </select>
+            <select className="form-input" value={form.id_proveedor} onChange={e => setForm({...form, id_proveedor: e.target.value})} required>
+              <option value="">Seleccionar Proveedor</option>
+              {proveedores.map(p => <option key={p.id_proveedor} value={p.id_proveedor}>{p.razonsocial}</option>)}
+            </select>
+            <div>
+              <input type="file" accept="image/*" onChange={e => setFile(e.target.files[0])} />
+              <div className="img-upload-area" style={{ marginTop: 12 }}>
+                {form.imagenes && !file && <img src={form.imagenes} alt="preview" />}
+                {file && <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>Archivo: {file.name}</p>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button type="submit" className="btn btn-success" disabled={uploading}>{uploading ? 'Subiendo...' : (editId ? 'Actualizar' : 'Crear')}</button>
+              <button type="button" className="btn btn-secondary" onClick={() => { setShowForm(false); setEditId(null); setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' }); setFile(null); }}>Cancelar</button>
+            </div>
+          </form>
+        </div>
+      )}
+      <div className="table-container">
+        <table>
+          <thead><tr><th>ID</th><th>Imagen</th><th>Descripción</th><th>Precio</th><th>Stock</th><th>Categoría</th><th>Proveedor</th><th>Acciones</th></tr></thead>
+          <tbody>
+            {data.map(item => (
+              <tr key={item.id_producto}>
+                <td>{item.id_producto}</td>
+                <td>{item.imagenes ? <img src={item.imagenes} alt={item.descripcion} className="img-preview" /> : <span style={{ color: 'var(--gray-400)' }}>Sin imagen</span>}</td>
+                <td>{item.descripcion}</td>
+                <td>${item.precio}</td>
+                <td>{item.stock}</td>
+                <td>{item.categoria?.descripcion || item.id_categoria}</td>
+                <td>{item.proveedor?.razonsocial || item.id_proveedor}</td>
+                <td>
+                  <div className="action-btns">
+                    <button className="btn btn-secondary btn-sm" onClick={() => handleEdit(item)}>Editar</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(item.id_producto)}>Eliminar</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
