@@ -85,10 +85,12 @@ app.post('/clientes', verifyAdminToken, async (req, res) => {
     try {
         const { nombres, apellidos, direccion, telefono } = req.body;
         if (!nombres || !apellidos || !direccion || !telefono) return res.status(400).json({ error: 'Todos los campos son requeridos' });
+        const nextId = await getNextId('clientes', 'id_cliente');
         const response = await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
+                id_cliente: nextId,
                 nombres: nombres.toString().trim().substring(0, 50),
                 apellidos: apellidos.toString().trim().substring(0, 50),
                 direccion: direccion.toString().trim().substring(0, 50),
@@ -152,10 +154,11 @@ app.post('/categoria', verifyAdminToken, async (req, res) => {
     try {
         const { descripcion } = req.body;
         if (!descripcion) return res.status(400).json({ error: 'La descripción es requerida' });
+        const nextId = await getNextId('categoria', 'id_categoria');
         const response = await fetch(`${SUPABASE_URL}/rest/v1/categoria`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({ descripcion: descripcion.toString().trim().substring(0, 100) })
+            body: JSON.stringify({ id_categoria: nextId, descripcion: descripcion.toString().trim().substring(0, 100) })
         });
         const text = await response.text();
         if (!response.ok) return res.status(response.status).json({ error: text });
@@ -209,10 +212,12 @@ app.post('/proveedor', verifyAdminToken, async (req, res) => {
     try {
         const { razonsocial, direccion, telefono } = req.body;
         if (!razonsocial || !direccion || !telefono) return res.status(400).json({ error: 'Todos los campos son requeridos' });
+        const nextId = await getNextId('proveedor', 'id_proveedor');
         const response = await fetch(`${SUPABASE_URL}/rest/v1/proveedor`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
+                id_proveedor: nextId,
                 razonsocial: razonsocial.toString().trim().substring(0, 50),
                 direccion: direccion.toString().trim().substring(0, 50),
                 telefono: telefono.toString().trim().substring(0, 50)
@@ -285,10 +290,12 @@ app.post('/producto', verifyAdminToken, async (req, res) => {
     try {
         const { descripcion, precio, stock, id_categoria, id_proveedor } = req.body;
         if (!descripcion || !precio || !stock || !id_categoria || !id_proveedor) return res.status(400).json({ error: 'Todos los campos son requeridos' });
+        const nextId = await getNextId('producto', 'id_producto');
         const response = await fetch(`${SUPABASE_URL}/rest/v1/producto`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
+                id_producto: nextId,
                 descripcion: descripcion.toString().trim().substring(0, 50),
                 precio: parseFloat(precio),
                 stock: parseInt(stock),
@@ -354,10 +361,12 @@ app.post('/ventas', verifyAdminToken, async (req, res) => {
     try {
         const { id_cliente, fecha, detalles } = req.body;
         if (!id_cliente) return res.status(400).json({ error: 'El cliente es requerido' });
+        const nextVentaId = await getNextId('ventas', 'id_venta');
         const ventaResponse = await fetch(`${SUPABASE_URL}/rest/v1/ventas`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
+                id_venta: nextVentaId,
                 id_cliente: parseInt(id_cliente),
                 fecha: fecha || new Date().toISOString()
             })
@@ -367,10 +376,12 @@ app.post('/ventas', verifyAdminToken, async (req, res) => {
         const venta = JSON.parse(text)[0];
         if (detalles && Array.isArray(detalles) && detalles.length > 0) {
             for (const d of detalles) {
+                const nextDetId = await getNextId('detalle_venta', 'id_detventa');
                 await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify({
+                        id_detventa: nextDetId,
                         id_venta: venta.id_venta,
                         id_producto: parseInt(d.id_producto),
                         cantidad: parseInt(d.cantidad)
@@ -384,6 +395,13 @@ app.post('/ventas', verifyAdminToken, async (req, res) => {
     }
 });
 
+// Helper to get next ID for a table
+const getNextId = async (table, idColumn) => {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${idColumn}&order=${idColumn}.desc&limit=1`, { headers });
+    const data = await response.json();
+    return data.length > 0 ? parseInt(data[0][idColumn]) + 1 : 1;
+};
+
 // Public store purchase endpoint (no admin token required)
 app.post('/store/purchase', async (req, res) => {
     try {
@@ -394,10 +412,12 @@ app.post('/store/purchase', async (req, res) => {
         if (!detalles || !Array.isArray(detalles) || detalles.length === 0) {
             return res.status(400).json({ error: 'Detalles de la compra son requeridos' });
         }
+        const nextClienteId = await getNextId('clientes', 'id_cliente');
         const clientResponse = await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
+                id_cliente: nextClienteId,
                 nombres: cliente.nombres.toString().trim().substring(0, 50),
                 apellidos: cliente.apellidos.toString().trim().substring(0, 50),
                 direccion: cliente.direccion.toString().trim().substring(0, 50),
@@ -407,10 +427,12 @@ app.post('/store/purchase', async (req, res) => {
         const clientText = await clientResponse.text();
         if (!clientResponse.ok) return res.status(400).json({ error: 'Error al crear cliente: ' + clientText });
         const newClient = JSON.parse(clientText)[0];
+        const nextVentaId = await getNextId('ventas', 'id_venta');
         const ventaResponse = await fetch(`${SUPABASE_URL}/rest/v1/ventas`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
+                id_venta: nextVentaId,
                 id_cliente: newClient.id_cliente,
                 fecha: new Date().toISOString()
             })
@@ -419,10 +441,12 @@ app.post('/store/purchase', async (req, res) => {
         if (!ventaResponse.ok) return res.status(400).json({ error: 'Error al crear venta: ' + ventaText });
         const venta = JSON.parse(ventaText)[0];
         for (const d of detalles) {
+            const nextDetId = await getNextId('detalle_venta', 'id_detventa');
             await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
+                    id_detventa: nextDetId,
                     id_venta: venta.id_venta,
                     id_producto: parseInt(d.id_producto),
                     cantidad: parseInt(d.cantidad)
@@ -471,10 +495,12 @@ app.post('/detalle_venta', verifyAdminToken, async (req, res) => {
     try {
         const { id_venta, id_producto, cantidad } = req.body;
         if (!id_venta || !id_producto || !cantidad) return res.status(400).json({ error: 'Todos los campos son requeridos' });
+        const nextId = await getNextId('detalle_venta', 'id_detventa');
         const response = await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
+                id_detventa: nextId,
                 id_venta: parseInt(id_venta),
                 id_producto: parseInt(id_producto),
                 cantidad: parseInt(cantidad)
