@@ -370,18 +370,21 @@ app.post('/ventas', verifyAdminToken, async (req, res) => {
         if (!ventaResponse.ok) return res.status(ventaResponse.status).json({ error: text });
         const venta = JSON.parse(text)[0];
         if (detalles && Array.isArray(detalles) && detalles.length > 0) {
-            const nextDetId = await getNextId('detalle_venta', 'id_detventa');
-            for (let i = 0; i < detalles.length; i++) {
-                const d = detalles[i];
-                await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
+            for (const d of detalles) {
+                const nextDetId = await getNextId('detalle_venta', 'id_detventa');
+                const detRes = await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
                     method: 'POST', headers,
                     body: JSON.stringify({
-                        id_detventa: nextDetId + i,
+                        id_detventa: nextDetId,
                         id_venta: venta.id_venta,
                         id_producto: parseInt(d.id_producto),
                         cantidad: parseInt(d.cantidad)
                     })
                 });
+                if (!detRes.ok) {
+                    const detErr = await detRes.text();
+                    console.error('Error creating detail:', detErr);
+                }
             }
         }
         res.status(201).json(venta);
@@ -488,15 +491,20 @@ app.post('/store/purchase', async (req, res) => {
         
         for (let i = 0; i < detalles.length; i++) {
             const d = detalles[i];
-            await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
+            const nextDetId = await getNextId('detalle_venta', 'id_detventa');
+            const detRes = await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
                 method: 'POST', headers,
                 body: JSON.stringify({
-                    id_detventa: nextDetId + i,
+                    id_detventa: nextDetId,
                     id_venta: venta.id_venta,
                     id_producto: parseInt(d.id_producto),
                     cantidad: parseInt(d.cantidad)
                 })
             });
+            if (!detRes.ok) {
+                const detErr = await detRes.text();
+                console.error('Error creating detail:', detErr);
+            }
             // Update stock
             const stockResponse = await fetch(`${SUPABASE_URL}/rest/v1/producto?id_producto=eq.${d.id_producto}`, {
                 method: 'PATCH', headers,
