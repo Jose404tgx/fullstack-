@@ -33,7 +33,8 @@ app.post('/login', (req, res) => {
 const verifyAdminToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
-    if (token === ADMIN_TOKEN) {
+    
+    if (token === ADMIN_TOKEN || token === 'Bearer ' + ADMIN_TOKEN) {
         next();
     } else {
         res.status(403).json({ error: 'Acceso denegado. Token inválido.' });
@@ -509,16 +510,14 @@ app.post('/taypi/create', async (req, res) => {
     try {
         const { amount, reference, description } = req.body;
         if (!amount || !reference) return res.status(400).json({ error: 'Monto y referencia son requeridos' });
-        const timestamp = Math.floor(Date.now() / 1000).toString();
         const response = await fetch(`${TAYPI_API_URL}/payments`, {
             method: 'POST',
             headers: {
-                'Taypi-Signature': TAYPI_SECRET_KEY,
-                'Taypi-Timestamp': timestamp,
+                'Authorization': `Bearer ${TAYPI_SECRET_KEY}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                amount: amount.toFixed(2),
+                amount: parseFloat(amount).toFixed(2),
                 reference: reference,
                 description: description || 'Compra en tienda online'
             })
@@ -533,12 +532,10 @@ app.post('/taypi/create', async (req, res) => {
 
 app.get('/taypi/payment/:id', async (req, res) => {
     try {
-        const timestamp = Math.floor(Date.now() / 1000).toString();
         const response = await fetch(`${TAYPI_API_URL}/payments/${req.params.id}`, {
             method: 'GET',
             headers: {
-                'Taypi-Signature': TAYPI_SECRET_KEY,
-                'Taypi-Timestamp': timestamp
+                'Authorization': `Bearer ${TAYPI_SECRET_KEY}`
             }
         });
         const data = await response.json();
@@ -551,12 +548,10 @@ app.get('/taypi/payment/:id', async (req, res) => {
 
 app.post('/taypi/cancel/:id', async (req, res) => {
     try {
-        const timestamp = Math.floor(Date.now() / 1000).toString();
         const response = await fetch(`${TAYPI_API_URL}/payments/${req.params.id}/cancel`, {
             method: 'POST',
             headers: {
-                'Taypi-Signature': TAYPI_SECRET_KEY,
-                'Taypi-Timestamp': timestamp
+                'Authorization': `Bearer ${TAYPI_SECRET_KEY}`
             }
         });
         const data = await response.json();

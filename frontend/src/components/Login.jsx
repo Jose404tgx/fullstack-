@@ -24,6 +24,7 @@ function Login() {
       const data = await response.json();
 
       if (response.ok) {
+        // Guardar el token exactamente como viene
         localStorage.setItem('adminToken', data.token);
         localStorage.setItem('adminUser', username);
         navigate('/admin');
