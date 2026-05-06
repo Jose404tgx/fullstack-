@@ -370,12 +370,13 @@ app.post('/ventas', verifyAdminToken, async (req, res) => {
         if (!ventaResponse.ok) return res.status(ventaResponse.status).json({ error: text });
         const venta = JSON.parse(text)[0];
         if (detalles && Array.isArray(detalles) && detalles.length > 0) {
-            for (const d of detalles) {
-                const nextDetId = await getNextId('detalle_venta', 'id_detventa');
+            const nextDetId = await getNextId('detalle_venta', 'id_detventa');
+            for (let i = 0; i < detalles.length; i++) {
+                const d = detalles[i];
                 await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
                     method: 'POST', headers,
                     body: JSON.stringify({
-                        id_detventa: nextDetId,
+                        id_detventa: nextDetId + i,
                         id_venta: venta.id_venta,
                         id_producto: parseInt(d.id_producto),
                         cantidad: parseInt(d.cantidad)
@@ -485,12 +486,12 @@ app.post('/store/purchase', async (req, res) => {
         if (!ventaResponse.ok) return res.status(400).json({ error: 'Error al crear venta: ' + ventaText });
         const venta = JSON.parse(ventaText)[0];
         
-        for (const d of detalles) {
-            const nextDetId = await getNextId('detalle_venta', 'id_detventa');
+        for (let i = 0; i < detalles.length; i++) {
+            const d = detalles[i];
             await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
                 method: 'POST', headers,
                 body: JSON.stringify({
-                    id_detventa: nextDetId,
+                    id_detventa: nextDetId + i,
                     id_venta: venta.id_venta,
                     id_producto: parseInt(d.id_producto),
                     cantidad: parseInt(d.cantidad)
