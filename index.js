@@ -44,6 +44,13 @@ const verifyAdminToken = (req, res, next) => {
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
+const getLocalDate = () => {
+    const now = new Date();
+    const limaOffset = -5;
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    return new Date(utc + limaOffset * 3600000).toISOString().slice(0, 19).replace('T', ' ');
+};
+
 const headers = {
     'apikey': SUPABASE_SERVICE_KEY,
     'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
@@ -356,7 +363,7 @@ app.post('/ventas', verifyAdminToken, async (req, res) => {
             body: JSON.stringify({
                 id_venta: nextVentaId,
                 id_cliente: parseInt(id_cliente),
-                fecha: fecha || new Date().toISOString()
+                fecha: fecha || getLocalDate()
             })
         });
         const text = await ventaResponse.text();
@@ -471,7 +478,7 @@ app.post('/store/purchase', async (req, res) => {
             body: JSON.stringify({
                 id_venta: nextVentaId,
                 id_cliente: newClient.id_cliente,
-                fecha: new Date().toISOString()
+                fecha: getLocalDate()
             })
         });
         const ventaText = await ventaResponse.text();
