@@ -548,12 +548,48 @@ app.get('/taypi/payment/:id', async (req, res) => {
 
 app.post('/taypi/cancel/:id', async (req, res) => {
     try {
+        const timestamp = Math.floor(Date.now() / 1000).toString();
         const response = await fetch(`${TAYPI_API_URL}/payments/${req.params.id}/cancel`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${TAYPI_SECRET_KEY}`
             }
         });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Error al cancelar pago' });
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Taypi Webhook Endpoint
+app.post('/taypi/webhook', async (req, res) => {
+    try {
+        const signature = req.headers['taypi-signature'];
+        const timestamp = req.headers['taypi-timestamp'];
+        
+        // Validar signature (opcional, pero recomendado)
+        if (signature !== TAYPI_SECRET_KEY) {
+            return res.status(401).json({ error: 'Invalid signature' });
+        }
+        
+        const { event, data } = req.body;
+        console.log('Taypi Webhook:', event, data);
+        
+        if (event === 'payment.paid') {
+            // El pago fue confirmado
+            console.log('Pago confirmado:', data.payment_id);
+            // Aquí podrías actualizar el estado en tu BD
+        } else if (event === 'payment.cancelled') {
+            console.log('Pago cancelado:', data.payment_id);
+        }
+        
+        res.json({ received: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
         const data = await response.json();
         if (!response.ok) return res.status(response.status).json({ error: data.message || 'Error al cancelar pago' });
         res.json(data);
