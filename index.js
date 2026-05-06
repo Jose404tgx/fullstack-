@@ -1,8 +1,5 @@
 const express = require('express');
 const path = require('path');
-const multer = require('multer');
-const fs = require('fs');
-const upload = multer({ storage: multer.memoryStorage() });
 const app = express();
 const port = process.env.PORT || 3127;
 
@@ -14,16 +11,10 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use('/upload', (req, res, next) => {
-    if (req.method === 'POST') {
-        delete req.headers['content-type'];
-    }
-    next();
-});
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Admin credentials (in production, use environment variables and hashed passwords)
+// Admin credentials
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const ADMIN_TOKEN = 'admin-secret-token-2026';
@@ -31,18 +22,10 @@ const ADMIN_TOKEN = 'admin-secret-token-2026';
 // Login endpoint
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
-    
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-        res.json({ 
-            success: true, 
-            token: ADMIN_TOKEN,
-            message: 'Login exitoso' 
-        });
+        res.json({ success: true, token: ADMIN_TOKEN, message: 'Login exitoso' });
     } else {
-        res.status(401).json({ 
-            success: false, 
-            error: 'Credenciales inválidas' 
-        });
+        res.status(401).json({ success: false, error: 'Credenciales inválidas' });
     }
 });
 
@@ -50,7 +33,6 @@ app.post('/login', (req, res) => {
 const verifyAdminToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
-    
     if (token === ADMIN_TOKEN) {
         next();
     } else {
@@ -60,7 +42,6 @@ const verifyAdminToken = (req, res, next) => {
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const SUPABASE_BUCKET = 'productos';
 const TAYPI_API_URL = process.env.TAYPI_API_URL;
 const TAYPI_SECRET_KEY = process.env.TAYPI_SECRET_KEY;
 
@@ -71,47 +52,12 @@ const headers = {
     'Prefer': 'return=representation'
 };
 
-// Upload image to Supabase Storage
-app.post('/upload', verifyAdminToken, upload.single('imagen'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ error: 'No se envió ninguna imagen' });
-        const fileName = `producto_${Date.now()}_${req.file.originalname}`;
-        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${fileName}`, {
-            method: 'POST',
-            headers: {
-                'apikey': SUPABASE_SERVICE_KEY,
-                'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-                'Content-Type': req.file.mimetype || 'image/jpeg',
-                'x-upsert': 'false'
-            },
-            body: req.file.buffer
-        });
-        const uploadText = await uploadRes.text();
-        if (!uploadRes.ok) return res.status(400).json({ error: 'Error al subir imagen: ' + uploadText });
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${fileName}`;
-        res.json({ url: publicUrl });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-            const uploadText = await uploadRes.text();
-            if (!uploadRes.ok) return res.status(400).json({ error: 'Error al subir imagen: ' + uploadText });
-            const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${fileName}`;
-            res.json({ url: publicUrl });
-        } catch (error) {
-            res.status(500).json({ error: error.message });
-        }
-    })();
-});
-        fs.unlinkSync(file.filepath);
-        const uploadText = await uploadRes.text();
-        if (!uploadRes.ok) return res.status(400).json({ error: 'Error al subir imagen: ' + uploadText });
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${fileName}`;
-        res.json({ url: publicUrl });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+// Helper to get next ID
+const getNextId = async (table, idColumn) => {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${idColumn}&order=${idColumn}.desc&limit=1`, { headers });
+    const data = await response.json();
+    return data.length > 0 ? parseInt(data[0][idColumn]) + 1 : 1;
+};
 
 // ==================== API ROUTES (Protected) ====================
 
@@ -141,8 +87,7 @@ app.post('/clientes', verifyAdminToken, async (req, res) => {
         if (!nombres || !apellidos || !direccion || !telefono) return res.status(400).json({ error: 'Todos los campos son requeridos' });
         const nextId = await getNextId('clientes', 'id_cliente');
         const response = await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
-            method: 'POST',
-            headers,
+            method: 'POST', headers,
             body: JSON.stringify({
                 id_cliente: nextId,
                 nombres: nombres.toString().trim().substring(0, 50),
@@ -163,8 +108,7 @@ app.put('/clientes/:id', verifyAdminToken, async (req, res) => {
     try {
         const { nombres, apellidos, direccion, telefono } = req.body;
         const response = await fetch(`${SUPABASE_URL}/rest/v1/clientes?id_cliente=eq.${req.params.id}`, {
-            method: 'PATCH',
-            headers,
+            method: 'PATCH', headers,
             body: JSON.stringify({
                 nombres: (nombres?.trim() || '').substring(0, 50),
                 apellidos: (apellidos?.trim() || '').substring(0, 50),
@@ -185,8 +129,7 @@ app.put('/clientes/:id', verifyAdminToken, async (req, res) => {
 app.delete('/clientes/:id', verifyAdminToken, async (req, res) => {
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/clientes?id_cliente=eq.${req.params.id}`, {
-            method: 'DELETE',
-            headers
+            method: 'DELETE', headers
         });
         if (response.status === 204) res.json({ mensaje: 'Cliente eliminado' });
         else res.status(404).json({ error: 'Cliente no encontrado' });
@@ -210,8 +153,7 @@ app.post('/categoria', verifyAdminToken, async (req, res) => {
         if (!descripcion) return res.status(400).json({ error: 'La descripción es requerida' });
         const nextId = await getNextId('categoria', 'id_categoria');
         const response = await fetch(`${SUPABASE_URL}/rest/v1/categoria`, {
-            method: 'POST',
-            headers,
+            method: 'POST', headers,
             body: JSON.stringify({ id_categoria: nextId, descripcion: descripcion.toString().trim().substring(0, 100) })
         });
         const text = await response.text();
@@ -226,8 +168,7 @@ app.put('/categoria/:id', verifyAdminToken, async (req, res) => {
     try {
         const { descripcion } = req.body;
         const response = await fetch(`${SUPABASE_URL}/rest/v1/categoria?id_categoria=eq.${req.params.id}`, {
-            method: 'PATCH',
-            headers,
+            method: 'PATCH', headers,
             body: JSON.stringify({ descripcion: (descripcion?.trim() || '').substring(0, 100) })
         });
         const text = await response.text();
@@ -243,8 +184,7 @@ app.put('/categoria/:id', verifyAdminToken, async (req, res) => {
 app.delete('/categoria/:id', verifyAdminToken, async (req, res) => {
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/categoria?id_categoria=eq.${req.params.id}`, {
-            method: 'DELETE',
-            headers
+            method: 'DELETE', headers
         });
         if (response.status === 204) res.json({ mensaje: 'Categoria eliminada' });
         else res.status(404).json({ error: 'Categoria no encontrada' });
@@ -268,8 +208,7 @@ app.post('/proveedor', verifyAdminToken, async (req, res) => {
         if (!razonsocial || !direccion || !telefono) return res.status(400).json({ error: 'Todos los campos son requeridos' });
         const nextId = await getNextId('proveedor', 'id_proveedor');
         const response = await fetch(`${SUPABASE_URL}/rest/v1/proveedor`, {
-            method: 'POST',
-            headers,
+            method: 'POST', headers,
             body: JSON.stringify({
                 id_proveedor: nextId,
                 razonsocial: razonsocial.toString().trim().substring(0, 50),
@@ -289,8 +228,7 @@ app.put('/proveedor/:id', verifyAdminToken, async (req, res) => {
     try {
         const { razonsocial, direccion, telefono } = req.body;
         const response = await fetch(`${SUPABASE_URL}/rest/v1/proveedor?id_proveedor=eq.${req.params.id}`, {
-            method: 'PATCH',
-            headers,
+            method: 'PATCH', headers,
             body: JSON.stringify({
                 razonsocial: (razonsocial?.trim() || '').substring(0, 50),
                 direccion: (direccion?.trim() || '').substring(0, 50),
@@ -310,8 +248,7 @@ app.put('/proveedor/:id', verifyAdminToken, async (req, res) => {
 app.delete('/proveedor/:id', verifyAdminToken, async (req, res) => {
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/proveedor?id_proveedor=eq.${req.params.id}`, {
-            method: 'DELETE',
-            headers
+            method: 'DELETE', headers
         });
         if (response.status === 204) res.json({ mensaje: 'Proveedor eliminado' });
         else res.status(404).json({ error: 'Proveedor no encontrado' });
@@ -320,7 +257,7 @@ app.delete('/proveedor/:id', verifyAdminToken, async (req, res) => {
     }
 });
 
-// Public product route for the store (no token required)
+// Public product route
 app.get('/producto', async (req, res) => {
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/producto?select=*,categoria(descripcion),proveedor(razonsocial)&order=id_producto.asc`, { headers });
@@ -330,7 +267,7 @@ app.get('/producto', async (req, res) => {
     }
 });
 
-// Protected product routes for admin
+// Admin product routes
 app.get('/producto/admin', verifyAdminToken, async (req, res) => {
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/producto?select=*,categoria(descripcion),proveedor(razonsocial)&order=id_producto.asc`, { headers });
@@ -346,8 +283,7 @@ app.post('/producto', verifyAdminToken, async (req, res) => {
         if (!descripcion || !precio || !stock || !id_categoria || !id_proveedor) return res.status(400).json({ error: 'Todos los campos son requeridos' });
         const nextId = await getNextId('producto', 'id_producto');
         const response = await fetch(`${SUPABASE_URL}/rest/v1/producto`, {
-            method: 'POST',
-            headers,
+            method: 'POST', headers,
             body: JSON.stringify({
                 id_producto: nextId,
                 descripcion: descripcion.toString().trim().substring(0, 50),
@@ -370,8 +306,7 @@ app.put('/producto/:id', verifyAdminToken, async (req, res) => {
     try {
         const { descripcion, precio, stock, id_categoria, id_proveedor, imagenes } = req.body;
         const response = await fetch(`${SUPABASE_URL}/rest/v1/producto?id_producto=eq.${req.params.id}`, {
-            method: 'PATCH',
-            headers,
+            method: 'PATCH', headers,
             body: JSON.stringify({
                 descripcion: (descripcion?.trim() || '').substring(0, 50),
                 precio: precio !== undefined ? parseFloat(precio) : undefined,
@@ -394,8 +329,7 @@ app.put('/producto/:id', verifyAdminToken, async (req, res) => {
 app.delete('/producto/:id', verifyAdminToken, async (req, res) => {
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/producto?id_producto=eq.${req.params.id}`, {
-            method: 'DELETE',
-            headers
+            method: 'DELETE', headers
         });
         if (response.status === 204) res.json({ mensaje: 'Producto eliminado' });
         else res.status(404).json({ error: 'Producto no encontrado' });
@@ -419,8 +353,7 @@ app.post('/ventas', verifyAdminToken, async (req, res) => {
         if (!id_cliente) return res.status(400).json({ error: 'El cliente es requerido' });
         const nextVentaId = await getNextId('ventas', 'id_venta');
         const ventaResponse = await fetch(`${SUPABASE_URL}/rest/v1/ventas`, {
-            method: 'POST',
-            headers,
+            method: 'POST', headers,
             body: JSON.stringify({
                 id_venta: nextVentaId,
                 id_cliente: parseInt(id_cliente),
@@ -434,8 +367,7 @@ app.post('/ventas', verifyAdminToken, async (req, res) => {
             for (const d of detalles) {
                 const nextDetId = await getNextId('detalle_venta', 'id_detventa');
                 await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
-                    method: 'POST',
-                    headers,
+                    method: 'POST', headers,
                     body: JSON.stringify({
                         id_detventa: nextDetId,
                         id_venta: venta.id_venta,
@@ -451,85 +383,13 @@ app.post('/ventas', verifyAdminToken, async (req, res) => {
     }
 });
 
-// Helper to get next ID for a table
-const getNextId = async (table, idColumn) => {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${idColumn}&order=${idColumn}.desc&limit=1`, { headers });
-    const data = await response.json();
-    return data.length > 0 ? parseInt(data[0][idColumn]) + 1 : 1;
-};
-
-// Public store purchase endpoint (no admin token required)
-app.post('/store/purchase', async (req, res) => {
-    try {
-        const { cliente, detalles } = req.body;
-        if (!cliente || !cliente.nombres || !cliente.apellidos || !cliente.direccion || !cliente.telefono) {
-            return res.status(400).json({ error: 'Datos del cliente son requeridos' });
-        }
-        if (!detalles || !Array.isArray(detalles) || detalles.length === 0) {
-            return res.status(400).json({ error: 'Detalles de la compra son requeridos' });
-        }
-        const nextClienteId = await getNextId('clientes', 'id_cliente');
-        const clientResponse = await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                id_cliente: nextClienteId,
-                nombres: cliente.nombres.toString().trim().substring(0, 50),
-                apellidos: cliente.apellidos.toString().trim().substring(0, 50),
-                direccion: cliente.direccion.toString().trim().substring(0, 50),
-                telefono: cliente.telefono.toString().trim().substring(0, 50)
-            })
-        });
-        const clientText = await clientResponse.text();
-        if (!clientResponse.ok) return res.status(400).json({ error: 'Error al crear cliente: ' + clientText });
-        const newClient = JSON.parse(clientText)[0];
-        const nextVentaId = await getNextId('ventas', 'id_venta');
-        const ventaResponse = await fetch(`${SUPABASE_URL}/rest/v1/ventas`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                id_venta: nextVentaId,
-                id_cliente: newClient.id_cliente,
-                fecha: new Date().toISOString()
-            })
-        });
-        const ventaText = await ventaResponse.text();
-        if (!ventaResponse.ok) return res.status(400).json({ error: 'Error al crear venta: ' + ventaText });
-        const venta = JSON.parse(ventaText)[0];
-        for (const d of detalles) {
-            const nextDetId = await getNextId('detalle_venta', 'id_detventa');
-            await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                    id_detventa: nextDetId,
-                    id_venta: venta.id_venta,
-                    id_producto: parseInt(d.id_producto),
-                    cantidad: parseInt(d.cantidad)
-                })
-            });
-            const prodResponse = await fetch(`${SUPABASE_URL}/rest/v1/producto?id_producto=eq.${d.id_producto}`, {
-                method: 'PATCH',
-                headers,
-                body: JSON.stringify({ stock: parseInt(d.stock_actual) - parseInt(d.cantidad) })
-            });
-            if (!prodResponse.ok) console.error('Error updating stock for product', d.id_producto);
-        }
-        res.status(201).json({ mensaje: 'Compra realizada con éxito', venta_id: venta.id_venta });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
 app.delete('/ventas/:id', verifyAdminToken, async (req, res) => {
     try {
         await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta?id_venta=eq.${req.params.id}`, {
-            method: 'DELETE',
-            headers
+            method: 'DELETE', headers
         });
         const response = await fetch(`${SUPABASE_URL}/rest/v1/ventas?id_venta=eq.${req.params.id}`, {
-            method: 'DELETE',
-            headers
+            method: 'DELETE', headers
         });
         if (response.status === 204) res.json({ mensaje: 'Venta eliminada' });
         else res.status(404).json({ error: 'Venta no encontrada' });
@@ -553,8 +413,7 @@ app.post('/detalle_venta', verifyAdminToken, async (req, res) => {
         if (!id_venta || !id_producto || !cantidad) return res.status(400).json({ error: 'Todos los campos son requeridos' });
         const nextId = await getNextId('detalle_venta', 'id_detventa');
         const response = await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
-            method: 'POST',
-            headers,
+            method: 'POST', headers,
             body: JSON.stringify({
                 id_detventa: nextId,
                 id_venta: parseInt(id_venta),
@@ -565,6 +424,80 @@ app.post('/detalle_venta', verifyAdminToken, async (req, res) => {
         const text = await response.text();
         if (!response.ok) return res.status(response.status).json({ error: text });
         res.status(201).json(JSON.parse(text)[0]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/detalle_venta/:id', verifyAdminToken, async (req, res) => {
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta?id_detventa=eq.${req.params.id}`, {
+            method: 'DELETE', headers
+        });
+        if (response.status === 204) res.json({ mensaje: 'Detalle eliminado' });
+        else res.status(404).json({ error: 'Detalle no encontrado' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Public store purchase endpoint
+app.post('/store/purchase', async (req, res) => {
+    try {
+        const { cliente, detalles } = req.body;
+        if (!cliente || !cliente.nombres || !cliente.apellidos || !cliente.direccion || !cliente.telefono) {
+            return res.status(400).json({ error: 'Datos del cliente son requeridos' });
+        }
+        if (!detalles || !Array.isArray(detalles) || detalles.length === 0) {
+            return res.status(400).json({ error: 'Detalles de la compra son requeridos' });
+        }
+        const nextClienteId = await getNextId('clientes', 'id_cliente');
+        const clientResponse = await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
+            method: 'POST', headers,
+            body: JSON.stringify({
+                id_cliente: nextClienteId,
+                nombres: cliente.nombres.toString().trim().substring(0, 50),
+                apellidos: cliente.apellidos.toString().trim().substring(0, 50),
+                direccion: cliente.direccion.toString().trim().substring(0, 50),
+                telefono: cliente.telefono.toString().trim().substring(0, 50)
+            })
+        });
+        const clientText = await clientResponse.text();
+        if (!clientResponse.ok) return res.status(400).json({ error: 'Error al crear cliente: ' + clientText });
+        const newClient = JSON.parse(clientText)[0];
+        
+        const nextVentaId = await getNextId('ventas', 'id_venta');
+        const ventaResponse = await fetch(`${SUPABASE_URL}/rest/v1/ventas`, {
+            method: 'POST', headers,
+            body: JSON.stringify({
+                id_venta: nextVentaId,
+                id_cliente: newClient.id_cliente,
+                fecha: new Date().toISOString()
+            })
+        });
+        const ventaText = await ventaResponse.text();
+        if (!ventaResponse.ok) return res.status(400).json({ error: 'Error al crear venta: ' + ventaText });
+        const venta = JSON.parse(ventaText)[0];
+        
+        for (const d of detalles) {
+            const nextDetId = await getNextId('detalle_venta', 'id_detventa');
+            await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta`, {
+                method: 'POST', headers,
+                body: JSON.stringify({
+                    id_detventa: nextDetId,
+                    id_venta: venta.id_venta,
+                    id_producto: parseInt(d.id_producto),
+                    cantidad: parseInt(d.cantidad)
+                })
+            });
+            // Update stock
+            const stockResponse = await fetch(`${SUPABASE_URL}/rest/v1/producto?id_producto=eq.${d.id_producto}`, {
+                method: 'PATCH', headers,
+                body: JSON.stringify({ stock: parseInt(d.stock_actual) - parseInt(d.cantidad) })
+            });
+            if (!stockResponse.ok) console.error('Error updating stock for product', d.id_producto);
+        }
+        res.status(201).json({ mensaje: 'Compra realizada con éxito', venta_id: venta.id_venta });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -634,27 +567,14 @@ app.post('/taypi/cancel/:id', async (req, res) => {
     }
 });
 
-app.delete('/detalle_venta/:id', verifyAdminToken, async (req, res) => {
-    try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/detalle_venta?id_detventa=eq.${req.params.id}`, {
-            method: 'DELETE',
-            headers
-        });
-        if (response.status === 204) res.json({ mensaje: 'Detalle eliminado' });
-        else res.status(404).json({ error: 'Detalle no encontrado' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
 // ==================== SERVE REACT APP ====================
 const distPath = path.join(__dirname, 'frontend', 'dist');
 const indexPath = path.join(distPath, 'index.html');
 
 console.log('Serving frontend from:', distPath);
-console.log('Dist path exists:', fs.existsSync(distPath));
+console.log('Dist path exists:', require('fs').existsSync(distPath));
 
-if (fs.existsSync(distPath)) {
+if (require('fs').existsSync(distPath)) {
     app.use(express.static(distPath));
     app.use((req, res, next) => {
         const pathname = req.path;
