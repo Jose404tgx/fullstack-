@@ -8,6 +8,8 @@ export default function Productos() {
   const [form, setForm] = useState({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' });
   const [editId, setEditId] = useState(null);
   const [msg, setMsg] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [file, setFile] = useState(null);
 
   const load = () => {
     api.fetchProductosAdmin().then(setData);
@@ -16,16 +18,41 @@ export default function Productos() {
   };
   useEffect(() => { load(); }, []);
 
+  const uploadImage = async () => {
+    if (!file) return form.imagenes;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('imagen', file);
+      const res = await fetch('/upload', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
+        body: formData
+      });
+      const data = await res.json();
+      setUploading(false);
+      if (data.url) return data.url;
+      throw new Error(data.error || 'Error al subir imagen');
+    } catch (err) {
+      setUploading(false);
+      throw err;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      let imagenUrl = form.imagenes;
+      if (file) {
+        imagenUrl = await uploadImage();
+      }
       const payload = {
         descripcion: form.descripcion,
         precio: parseFloat(form.precio),
         stock: parseInt(form.stock),
         id_categoria: parseInt(form.id_categoria),
         id_proveedor: parseInt(form.id_proveedor),
-        imagenes: form.imagenes || null
+        imagenes: imagenUrl || null
       };
       if (editId) {
         await api.updateProducto(editId, payload);
@@ -34,7 +61,8 @@ export default function Productos() {
         await api.createProducto(payload);
         setMsg('Producto creado');
       }
-        setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' });
+      setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' });
+      setFile(null);
       setEditId(null);
       load();
     } catch (err) { setMsg('Error: ' + err.message); }
@@ -50,6 +78,7 @@ export default function Productos() {
       imagenes: item.imagenes || ''
     });
     setEditId(item.id_producto);
+    setFile(null);
   };
 
   const handleDelete = async (id) => {
@@ -76,9 +105,11 @@ export default function Productos() {
           <option value="">Seleccionar Proveedor</option>
           {proveedores.map(p => <option key={p.id_proveedor} value={p.id_proveedor}>{p.razonsocial}</option>)}
         </select>
-        <input placeholder="URL de la imagen" value={form.imagenes || ''} onChange={e => setForm({...form, imagenes: e.target.value})} />
-        <button type="submit">{editId ? 'Actualizar' : 'Crear'}</button>
-        {editId && <button type="button" onClick={() => { setEditId(null); setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '' }); }}>Cancelar</button>}
+        <input type="file" accept="image/*" onChange={e => setFile(e.target.files[0])} />
+        {form.imagenes && !file && <img src={form.imagenes} alt="preview" style={{ width: 100, height: 100, objectFit: 'cover' }} />}
+        {file && <p>Archivo: {file.name}</p>}
+        <button type="submit" disabled={uploading}>{uploading ? 'Subiendo...' : (editId ? 'Actualizar' : 'Crear')}</button>
+        {editId && <button type="button" onClick={() => { setEditId(null); setForm({ descripcion: '', precio: '', stock: '', id_categoria: '', id_proveedor: '', imagenes: '' }); setFile(null); }}>Cancelar</button>}
       </form>
       <table border="1" cellPadding="8" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead><tr><th>ID</th><th>Imagen</th><th>Descripción</th><th>Precio</th><th>Stock</th><th>Categoría</th><th>Proveedor</th><th>Acciones</th></tr></thead>

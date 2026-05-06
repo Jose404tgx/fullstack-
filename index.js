@@ -1,5 +1,7 @@
 const express = require('express');
 const path = require('path');
+const formidable = require('formidable');
+const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3127;
 
@@ -13,6 +15,12 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/upload', (req, res, next) => {
+    if (req.method === 'POST') {
+        delete req.headers['content-type'];
+    }
+    next();
+});
 
 // Admin credentials (in production, use environment variables and hashed passwords)
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
@@ -51,6 +59,7 @@ const verifyAdminToken = (req, res, next) => {
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bezcodjjxvwqimvejegh.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlemNvZGpqeHZ3cWltdmVqZWdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg1ODIwMCwiZXhwIjoyMDkyNDM0MjAwfQ.dG1xmikYXDd2ciRt7VtAHpZ05fEqErOzBb8363O6LwE';
+const SUPABASE_BUCKET = 'productos';
 
 const headers = {
     'apikey': SUPABASE_SERVICE_KEY,
@@ -58,6 +67,35 @@ const headers = {
     'Content-Type': 'application/json',
     'Prefer': 'return=representation'
 };
+
+// Upload image to Supabase Storage
+app.post('/upload', verifyAdminToken, async (req, res) => {
+    try {
+        const form = formidable({ multiples: false });
+        const [fields, files] = await form.parse(req);
+        const file = files.imagen?.[0] || files.imagen;
+        if (!file) return res.status(400).json({ error: 'No se envió ninguna imagen' });
+        const fileData = fs.readFileSync(file.filepath);
+        const fileName = `producto_${Date.now()}_${file.originalFilename}`;
+        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${fileName}`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_SERVICE_KEY,
+                'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+                'Content-Type': file.mimetype || 'image/jpeg',
+                'x-upsert': 'false'
+            },
+            body: fileData
+        });
+        fs.unlinkSync(file.filepath);
+        const uploadText = await uploadRes.text();
+        if (!uploadRes.ok) return res.status(400).json({ error: 'Error al subir imagen: ' + uploadText });
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${fileName}`;
+        res.json({ url: publicUrl });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // ==================== API ROUTES (Protected) ====================
 
