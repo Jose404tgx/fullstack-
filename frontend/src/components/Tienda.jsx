@@ -9,10 +9,8 @@ function Tienda() {
   const [error, setError] = useState(null);
   const [cart, setCart] = useState([]);
   const [showCart, setShowCart] = useState(false);
-  const [cliente, setCliente] = useState({ nombres: '', apellidos: '', direccion: '', telefono: '' });
   const [showCheckout, setShowCheckout] = useState(false);
-  const [taypiData, setTaypiData] = useState(null);
-  const [paymentId, setPaymentId] = useState(null);
+  const [cliente, setCliente] = useState({ nombres: '', apellidos: '', direccion: '', telefono: '' });
   const [voucher, setVoucher] = useState(null);
 
   useEffect(() => {
@@ -72,74 +70,25 @@ function Tienda() {
       return;
     }
     try {
-      const reference = `ORDER-${Date.now()}`;
-      const response = await fetch('/taypi/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: getTotal(),
-          reference: reference,
-          description: `Compra en tienda - ${cliente.nombres}`
-        })
-      });
-      const data = await response.json();
-      if (data.error) {
-        alert('Error al generar pago: ' + data.error);
-        return;
-      }
-      setTaypiData(data);
-      setPaymentId(data.payment_id);
+      const detalles = cart.map(item => ({
+        id_producto: item.id_producto,
+        cantidad: item.cantidad,
+        stock_actual: item.stock
+      }));
+      const result = await api.createStorePurchase({ cliente, detalles });
       setShowCheckout(false);
       setShowCart(false);
+      setVoucher({
+        venta_id: result.venta_id,
+        cliente,
+        productos: cart,
+        total: getTotal(),
+        fecha: new Date().toLocaleString()
+      });
+      setCart([]);
+      setCliente({ nombres: '', apellidos: '', direccion: '', telefono: '' });
     } catch (err) {
-      alert('Error al procesar el pago');
-    }
-  };
-
-  const checkPaymentStatus = async () => {
-    if (!paymentId) return;
-    try {
-      const response = await fetch(`/taypi/payment/${paymentId}`);
-      const data = await response.json();
-      if (data.status === 'paid') {
-        const detalles = cart.map(item => ({
-          id_producto: item.id_producto,
-          cantidad: item.cantidad,
-          stock_actual: item.stock
-        }));
-        const result = await api.createStorePurchase({
-          cliente,
-          detalles
-        });
-        setTaypiData(null);
-        setPaymentId(null);
-        setVoucher({
-          venta_id: result.venta_id,
-          cliente,
-          productos: cart,
-          total: getTotal(),
-          payment_id: paymentId,
-          fecha: new Date().toLocaleString()
-        });
-        setCart([]);
-        setCliente({ nombres: '', apellidos: '', direccion: '', telefono: '' });
-      } else {
-        alert('El pago aún no se ha completado. Estado: ' + data.status);
-      }
-    } catch (err) {
-      alert('Error al verificar el pago');
-    }
-  };
-
-  const cancelPayment = async () => {
-    if (!paymentId) return;
-    try {
-      await fetch(`/taypi/cancel/${paymentId}`, { method: 'POST' });
-      setTaypiData(null);
-      setPaymentId(null);
-      setShowCheckout(true);
-    } catch (err) {
-      alert('Error al cancelar el pago');
+      alert('Error al registrar la venta: ' + err.message);
     }
   };
 
@@ -216,7 +165,7 @@ function Tienda() {
                 <div className="cart-footer">
                   <h3>Total: ${getTotal().toFixed(2)}</h3>
                   <button className="btn-checkout" onClick={() => { setShowCart(false); setShowCheckout(true); }}>
-                    Proceder al pago
+                    Finalizar compra
                   </button>
                 </div>
               </>
@@ -246,31 +195,8 @@ function Tienda() {
                 </div>
               ))}
               <h3>Total: ${getTotal().toFixed(2)}</h3>
-              <button type="submit" className="btn-checkout">Proceder al Pago</button>
+              <button type="submit" className="btn-checkout">Registrar Venta</button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {taypiData && (
-        <div className="cart-overlay">
-          <div className="checkout-modal" style={{ textAlign: 'center' }}>
-            <div className="cart-header">
-              <h2>Pagar con Yape</h2>
-              <button onClick={cancelPayment}>✕</button>
-            </div>
-            <p>Escanea el código QR con tu app de Yape</p>
-            {taypiData.qr_image && (
-              <img src={`data:image/png;base64,${taypiData.qr_image}`} alt="QR Yape" style={{ margin: '20px auto', display: 'block' }} />
-            )}
-            <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#2ecc71' }}>${parseFloat(taypiData.amount).toFixed(2)}</p>
-            <p>Referencia: {taypiData.reference}</p>
-            <button className="btn-checkout" onClick={checkPaymentStatus} style={{ marginTop: 20 }}>
-              Ya pagué - Verificar pago
-            </button>
-            <button onClick={cancelPayment} style={{ marginTop: 10, background: '#e74c3c' }} className="btn-checkout">
-              Cancelar pago
-            </button>
           </div>
         </div>
       )}
@@ -300,7 +226,6 @@ function Tienda() {
               ))}
               <hr/>
               <h3>Total: ${voucher.total.toFixed(2)}</h3>
-              <p><strong>Método de pago:</strong> Yape (ID: {voucher.payment_id})</p>
             </div>
             <button className="btn-checkout" onClick={() => setVoucher(null)} style={{ marginTop: 20 }}>
               Aceptar

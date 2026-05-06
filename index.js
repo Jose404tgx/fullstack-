@@ -43,8 +43,6 @@ const verifyAdminToken = (req, res, next) => {
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const TAYPI_API_URL = process.env.TAYPI_API_URL;
-const TAYPI_SECRET_KEY = process.env.TAYPI_SECRET_KEY;
 
 const headers = {
     'apikey': SUPABASE_SERVICE_KEY,
@@ -499,100 +497,6 @@ app.post('/store/purchase', async (req, res) => {
             if (!stockResponse.ok) console.error('Error updating stock for product', d.id_producto);
         }
         res.status(201).json({ mensaje: 'Compra realizada con éxito', venta_id: venta.id_venta });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// ==================== TAYPI PAYMENT ENDPOINTS ====================
-
-app.post('/taypi/create', async (req, res) => {
-    try {
-        const { amount, reference, description } = req.body;
-        if (!amount || !reference) return res.status(400).json({ error: 'Monto y referencia son requeridos' });
-        const response = await fetch(`${TAYPI_API_URL}/payments`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${TAYPI_SECRET_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                amount: parseFloat(amount).toFixed(2),
-                reference: reference,
-                description: description || 'Compra en tienda online'
-            })
-        });
-        const data = await response.json();
-        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Error al crear pago' });
-        res.json(data.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/taypi/payment/:id', async (req, res) => {
-    try {
-        const response = await fetch(`${TAYPI_API_URL}/payments/${req.params.id}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${TAYPI_SECRET_KEY}`
-            }
-        });
-        const data = await response.json();
-        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Error al consultar pago' });
-        res.json(data.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/taypi/cancel/:id', async (req, res) => {
-    try {
-        const timestamp = Math.floor(Date.now() / 1000).toString();
-        const response = await fetch(`${TAYPI_API_URL}/payments/${req.params.id}/cancel`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${TAYPI_SECRET_KEY}`
-            }
-        });
-        const data = await response.json();
-        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Error al cancelar pago' });
-        res.json(data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Taypi Webhook Endpoint
-app.post('/taypi/webhook', async (req, res) => {
-    try {
-        const signature = req.headers['taypi-signature'];
-        const timestamp = req.headers['taypi-timestamp'];
-        
-        // Validar signature (opcional, pero recomendado)
-        if (signature !== TAYPI_SECRET_KEY) {
-            return res.status(401).json({ error: 'Invalid signature' });
-        }
-        
-        const { event, data } = req.body;
-        console.log('Taypi Webhook:', event, data);
-        
-        if (event === 'payment.paid') {
-            // El pago fue confirmado
-            console.log('Pago confirmado:', data.payment_id);
-            // Aquí podrías actualizar el estado en tu BD
-        } else if (event === 'payment.cancelled') {
-            console.log('Pago cancelado:', data.payment_id);
-        }
-        
-        res.json({ received: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-        const data = await response.json();
-        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Error al cancelar pago' });
-        res.json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
